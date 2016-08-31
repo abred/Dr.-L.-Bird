@@ -87,3 +87,10 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+
+# other
+data/
+save.p
+currScore.png
+*.o
