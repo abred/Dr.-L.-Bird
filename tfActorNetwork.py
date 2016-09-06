@@ -60,7 +60,7 @@ class ActorNetwork:
         self.actions_placeholder = tf.placeholder(tf.float32,
                                                   shape=[None, 3])
         self.returns_placeholder = tf.placeholder(tf.float32,
-                                                  shape=[None])
+                                                  shape=[None, 1])
 
         self.forward_op = self.inference(self.images_placeholder)
 
@@ -193,7 +193,7 @@ class ActorNetwork:
             tmp1 -
             tf.mul(-tf.truediv(tf.square(tf.sub(actions, mu)),
                                tmp2.astype(np.float32)),
-                               # tf.mul(2.0, tf.square(sigma))),
+                   # tf.mul(2.0, tf.square(sigma))),
                    normReturns)
             )
         loss = tf.reduce_mean(E, name='log_gauss_loss_mean')

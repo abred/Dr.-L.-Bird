@@ -63,4 +63,6 @@ class DrLBird(Driver):
         print("Rewards: {}".format(rewards))
         print("Returns: {}".format(returns))
 
-        self.policy.backward(np.vstack(states), actions, returns)
+        self.policy.backward(np.vstack(states),
+                             np.vstack(actions),
+                             np.vstack(returns))

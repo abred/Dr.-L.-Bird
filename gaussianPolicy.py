@@ -5,7 +5,7 @@ import numpy as np
 from tfActorNetwork import *
 
 
-defaultSigma = np.array([1.0, 1.0, 100])
+defaultSigma = np.array([3.0, 3.0, 100])
 defaultMu = np.array([-40.0, 30.0, 2000.0])
 
 
