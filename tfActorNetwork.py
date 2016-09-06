@@ -1,12 +1,22 @@
+import math
 import os.path
 import time
+
+import numpy as np
 
 import tensorflow as tf
 
 
 def weight_variable(shape, name):
     initial = tf.truncated_normal(shape, stddev=0.1)
-    return tf.Variable(initial, name=name)
+    return tf.get_variable(name, shape=shape,
+                       initializer=tf.contrib.layers.xavier_initializer())
+
+
+def weight_variable_conv(shape, name):
+    initial = tf.truncated_normal(shape, stddev=0.1)
+    return tf.get_variable(name, shape=shape,
+                           initializer=tf.contrib.layers.xavier_initializer_conv2d())
 
 
 def bias_variable(shape, name):
@@ -25,7 +35,7 @@ def max_pool_2x2(x):
 
 class ActorNetwork:
     I = 832 * 448
-    O = 6
+    O = 3
     H1_F = 32
     H2_F = 64
     H3_F = 128
@@ -99,37 +109,37 @@ class ActorNetwork:
         x = tf.reshape(images, [-1, 448, 832, 1])
         # hidden 1
         with tf.name_scope('h1'):
-            weights = weight_variable([5, 5, 1, self.H1_F], 'w01')
+            weights = weight_variable_conv([5, 5, 1, self.H1_F], 'w01')
             biases = bias_variable([self.H1_F], 'b01')
             h1_conv = tf.nn.relu(conv2d(x, weights) + biases)
             h1_pool = max_pool_2x2(h1_conv)
         # hidden 2
         with tf.name_scope('h2'):
-            weights = weight_variable([3, 3, self.H1_F, self.H2_F], 'w12')
+            weights = weight_variable_conv([3, 3, self.H1_F, self.H2_F], 'w12')
             biases = bias_variable([self.H2_F], 'b12')
             h2_conv = tf.nn.relu(conv2d(h1_pool, weights) + biases)
             h2_pool = max_pool_2x2(h2_conv)
         # hidden 3
         with tf.name_scope('h3'):
-            weights = weight_variable([3, 3, self.H2_F, self.H3_F], 'w23')
+            weights = weight_variable_conv([3, 3, self.H2_F, self.H3_F], 'w23')
             biases = bias_variable([self.H3_F], 'b23')
             h3_conv = tf.nn.relu(conv2d(h2_pool, weights) + biases)
             h3_pool = max_pool_2x2(h3_conv)
         # hidden 4
         with tf.name_scope('h4'):
-            weights = weight_variable([3, 3, self.H3_F, self.H4_F], 'w34')
+            weights = weight_variable_conv([3, 3, self.H3_F, self.H4_F], 'w34')
             biases = bias_variable([self.H4_F], 'b34')
             h4_conv = tf.nn.relu(conv2d(h3_pool, weights) + biases)
             h4_pool = max_pool_2x2(h4_conv)
         # hidden 5
         with tf.name_scope('h5'):
-            weights = weight_variable([3, 3, self.H4_F, self.H5_F], 'w45')
+            weights = weight_variable_conv([3, 3, self.H4_F, self.H5_F], 'w45')
             biases = bias_variable([self.H5_F], 'b45')
             h5_conv = tf.nn.relu(conv2d(h4_pool, weights) + biases)
             h5_pool = max_pool_2x2(h5_conv)
         # hidden 6
         with tf.name_scope('h6'):
-            weights = weight_variable([3, 3, self.H5_F, self.H6_F], 'w56')
+            weights = weight_variable_conv([3, 3, self.H5_F, self.H6_F], 'w56')
             biases = bias_variable([self.H6_F], 'b56')
             h6_conv = tf.nn.relu(conv2d(h5_pool, weights) + biases)
             h6_pool = max_pool_2x2(h6_conv)
@@ -146,8 +156,14 @@ class ActorNetwork:
             weights = weight_variable([self.H7_F, self.O], 'w78')
             biases = bias_variable([self.O], 'b78')
             o_fc = tf.matmul(h7_drop, weights) + biases
-
-        return o_fc
+            x, y, t = tf.split(1, 3, o_fc)
+            # x_o = 50.0 * tf.tanh(0.02 * x)
+            x_o = -50.0 * tf.sigmoid(0.05 * x)
+            # y_o = 50.0 * tf.tanh(0.02 * y)
+            y_o = 50.0 * tf.sigmoid(0.02 * x)
+            t_o = 1000.0 * tf.tanh(0.001 * t) + 1000.0
+            out = tf.concat(1, [x_o, y_o, t_o])
+        return out
 
     def run_loss(self, outputs, actions, returns):
         feed_dict = {
@@ -166,10 +182,20 @@ class ActorNetwork:
         Returns:
         loss: Loss tensor of type float.
         """
-        mu, sigma = tf.split(1, 2, outputs)
-        E = tf.mul(-tf.truediv(tf.square(tf.sub(actions, mu)),
-                               tf.mul(2.0, tf.square(sigma))),
-                   returns)
+        # mu, sigma = tf.split(1, 2, outputs)
+        mu = outputs
+        sigma = np.array([1.0, 1.0, 100.0])
+        tmp1 = np.log(sigma)
+        tmp2 = 2.0 * sigma * sigma
+        normReturns = returns / 10000.0
+        E = (
+            -0.5 * math.log(2.0 * math.pi) -
+            tmp1 -
+            tf.mul(-tf.truediv(tf.square(tf.sub(actions, mu)),
+                               tmp2.astype(np.float32)),
+                               # tf.mul(2.0, tf.square(sigma))),
+                   normReturns)
+            )
         loss = tf.reduce_mean(E, name='log_gauss_loss_mean')
         return loss
 
@@ -220,8 +246,8 @@ class ActorNetwork:
         _, loss_value = self.sess.run([self.train_op, self.loss_op],
                                       feed_dict=feed_dict)
         # _, loss_value = self.sess.partial_run(self.h,
-                                              # [self.train_op, self.loss_op],
-                                              # feed_dict=feed_dict)
+        #                                       [self.train_op, self.loss_op],
+        #                                       feed_dict=feed_dict)
 
         duration = time.time() - start_time
 

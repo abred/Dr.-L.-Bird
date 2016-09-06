@@ -5,7 +5,7 @@ import numpy as np
 from tfActorNetwork import *
 
 
-defaultSigma = np.array([5.0, 5.0, 250])
+defaultSigma = np.array([1.0, 1.0, 100])
 defaultMu = np.array([-40.0, 30.0, 2000.0])
 
 
@@ -32,8 +32,8 @@ class GaussianPolicy:
 
     def forward(self, states):
         o = self.model.run_inference(states)
-        self.mu = o[0][:3]
-        self.sigma = o[0][3:]
+        self.mu = o[0]
+        # self.sigma = o[0][3:]
         return o
 
     def backward(self, states, actions, returns):
