@@ -1,6 +1,6 @@
 import ctypes
 import math
-# import time
+import time
 
 from PIL import Image
 
@@ -246,3 +246,27 @@ class Driver:
         t2 = action[2]
 
         self.shoot(mid, fx, fy, dx, dy, t1, t2)
+
+    def actionResponse(self, action):
+        self.act(action[0])
+        time.sleep(3)
+        score = self.getCurrScore()
+        time.sleep(11)
+
+        self.fillObs()
+        newState = self.preprocessDataForNN()
+
+        gameState = self.getStatePrint()
+        terminal = False
+        if gameState == 5:    # playing
+            score = self.getCurrScore()
+        elif gameState == 6:  # won
+            score = self.getEndScore()
+            terminal = True
+        elif gameState == 7:  # lost
+            # score = -10000
+            terminal = True
+        else:
+            raise Exception("should not get here")
+
+        return score, terminal, newState

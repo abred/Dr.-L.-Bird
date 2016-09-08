@@ -11,19 +11,12 @@ d.getStatePrint()
 
 # TEST
 
-
-if True:
-
-    while True:
-    # for i in range(0,3):
-
-        d.REINFORCE()
-
-        st = d.getState()
-        print("State: {}".format(st))
-        # if st != 5:
-            # break
-else:
+algo = 0
+if algo == 0:
+    d.DDPG()
+elif algo == 1:
+    d.REINFORCE()
+elif algo == 2:
     d.loadLevel(20)
     d.getStatePrint()
 
