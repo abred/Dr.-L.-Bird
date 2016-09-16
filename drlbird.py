@@ -1,3 +1,4 @@
+import os
 import time
 
 import numpy as np
@@ -17,31 +18,35 @@ class DrLBird(Driver):
 
     def DDPG(self):
         with tf.Session() as sess:
-            episode_reward = tf.Variable(0.)
+            episode_reward = tf.Variable(0., name="episodeReward")
             tf.scalar_summary("Reward", episode_reward)
-            episode_ave_max_q = tf.Variable(0.)
+            episode_ave_max_q = tf.Variable(0., name='epsideAvgMaxQ')
             tf.scalar_summary("Qmax Value", episode_ave_max_q)
-
             summary_vars = [episode_reward, episode_ave_max_q]
             summary_ops = tf.merge_all_summaries()
 
-            self.policy = DDPGPolicy(sess)
+            timestamp = str(int(time.time()))
+            out_dir = os.path.abspath(os.path.join(os.path.curdir,
+                                                   "runs", timestamp))
+            print("Summaries will be written to: {}\n".format(out_dir))
+
+            self.policy = DDPGPolicy(sess, out_dir)
+            writer = tf.train.SummaryWriter(out_dir, sess.graph)
 
             sess.run(tf.initialize_all_variables())
-            writer = tf.train.SummaryWriter('./results/tf_ddpg', sess.graph)
 
             maxEpisodes = 1000
             replayBufferSize = 1000
-            miniBatchSize = 4
+            miniBatchSize = 8
             gamma = 0.99
             replay = ReplayBuffer(replayBufferSize)
-            noise = OUNoise(3)
-            ep_reward = 0
-            ep_ave_max_q = 0
 
             for e in range(maxEpisodes):
+                noise = OUNoise(3)
                 oldScore = 0
                 terminal = False
+                ep_reward = 0
+                ep_ave_max_q = 0
                 self.loadRandLevel()
 
                 step = 0
@@ -49,9 +54,11 @@ class DrLBird(Driver):
                     step += 1
                     self.fillObs()
                     state = self.preprocessDataForNN()
-                    action = self.policy.getAction(state, noise.noise())
-                    score, terminal, newState = self.actionResponse(action)
+                    action, a_scaled = self.policy.getAction(state,
+                                                             noise.noise())
+                    score, terminal, newState = self.actionResponse(a_scaled)
                     reward = score - oldScore
+                    reward *= 0.0001
                     oldScore = score
                     replay.add(state, action, reward, terminal, newState)
 
@@ -77,7 +84,7 @@ class DrLBird(Driver):
 
                 summary_str = sess.run(summary_ops, feed_dict={
                     summary_vars[0]: ep_reward,
-                    summary_vars[1]: ep_ave_max_q / float(step-1)
+                    summary_vars[1]: ep_ave_max_q / float(step)
                 })
 
                 writer.add_summary(summary_str, e)

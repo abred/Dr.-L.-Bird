@@ -165,8 +165,9 @@ class Driver:
 
     def loadRandLevel(self):
         lvl = np.random.randint(1,22)
-        # self.loadLevel(lvl)
-        self.loadLevel(1)
+        print("loading level {}".format(lvl))
+        self.loadLevel(lvl)
+        # self.loadLevel(1)
         self.zoomOut()
         self.getStatePrint()
 

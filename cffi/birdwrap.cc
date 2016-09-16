@@ -115,9 +115,20 @@ void preprocessDataForNNImpl(int* input,
   // (output already zeroed)
   for (int y = 0; y < height-32; y++) {
     for (int x = 0; x < width-8; x++) {
-      output[y * (width-8) + x] = (float(input[(y+32) * width + (x+4)]) - 512.0f) / 256.0f;
+      // output[y * (width-8) + x] = (float(input[(y+32) * width + (x+4)]) - 512.0f) / 256.0f;
+      output[y * (width-8) + x] = float(input[(y+32) * width + (x+4)]) / 512.0f;
+
     }
   }
+
+  for (int y = 0; y < 448; y++) {
+    for (int x = 0; x < 832; x++) {
+      if(output[y * 832 + x] > 1.0 || output[y * 832 + x] < 0.0)
+        std::cerr << "pixel should be between 0 and 1: " << output[y * 832 + x] << std::endl;
+    }
+  }
+
+
 }
 
 
