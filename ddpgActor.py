@@ -26,12 +26,14 @@ class Actor:
         with tf.variable_scope('Actor'):
             # Actor Network
             prevTrainVarCount = len(tf.trainable_variables())
+            print("actor 1: {}".format(prevTrainVarCount))
             self.input_pl, self.nn = self.defineNN()
             self.nn_params = tf.trainable_variables()[prevTrainVarCount:]
 
             # Target Network
             with tf.variable_scope('target'):
                 prevTrainVarCount = len(tf.trainable_variables())
+                print("actor 2: {}".format(prevTrainVarCount))
                 self.target_input_pl, self.target_nn = \
                     self.defineNN(isTargetNN=True)
                 self.target_nn_params = \
@@ -47,6 +49,10 @@ class Actor:
             self.train_op = self.define_training()
             self.summary_op = tf.merge_summary(self.summaries)
             self.writer = tf.train.SummaryWriter(out_dir, sess.graph)
+            print("actor 3: {}".format(len(tf.trainable_variables())))
+            print("actor params: {}".format(self.nn_params))
+            print("actortarget params: {}".format(self.target_nn_params))
+
 
     def defineNN(self, isTargetNN=False):
         images = tf.placeholder(tf.float32,
@@ -131,7 +137,7 @@ class Actor:
                 self.nn_params,
                 # critic grad descent
                 # here ascent -> negative
-                -self.critic_actions_gradient_pl)
+                self.critic_actions_gradient_pl)
 
             return tf.train.AdamOptimizer(self.learning_rate).\
                 apply_gradients(zip(self.actor_gradients, self.nn_params))

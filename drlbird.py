@@ -91,7 +91,7 @@ class DrLBird(Driver):
                 writer.flush()
 
                 print('| Reward: {}, | Episode {}, | Qmax: {}'.
-                      format(int(ep_reward), e,
+                      format(ep_reward, e,
                              ep_ave_max_q / float(step)))
 
     def REINFORCE(self):

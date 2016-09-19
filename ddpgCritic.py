@@ -18,7 +18,7 @@ class Critic:
     tau = 0.001
     train_dir = 'data'
     actions_dim = 3
-    weight_decay = 0.01
+    weight_decay = 0.001
 
     def __init__(self, sess, out_dir):
         self.sess = sess
@@ -27,12 +27,14 @@ class Critic:
         with tf.variable_scope('Critic'):
             # Critic Network
             prevTrainVarCount = len(tf.trainable_variables())
+            print("critic 1: {}".format(prevTrainVarCount))
             self.input_pl, self.actions_pl, self.nn = self.defineNN()
             self.nn_params = tf.trainable_variables()[prevTrainVarCount:]
 
             # Target Network
             with tf.variable_scope('target'):
                 prevTrainVarCount = len(tf.trainable_variables())
+                print("critic 2: {}".format(prevTrainVarCount))
                 self.target_input_pl, self.target_actions_pl, self.target_nn =\
                     self.defineNN(isTargetNN=True)
                 self.target_nn_params = \
@@ -51,6 +53,9 @@ class Critic:
             self.action_grads = self.define_action_grad()
             self.summary_op = tf.merge_summary(self.summaries)
             self.writer = tf.train.SummaryWriter(out_dir, sess.graph)
+            print("critic 3: {}".format(prevTrainVarCount))
+            print("critic params: {}".format(self.nn_params))
+            print("critictarget params: {}".format(self.target_nn_params))
 
     def defineNN(self, isTargetNN=False):
         images = tf.placeholder(tf.float32,
