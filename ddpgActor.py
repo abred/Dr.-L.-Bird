@@ -98,18 +98,34 @@ class Actor:
                 ]
 
             outputs = tf.sigmoid(o_fc)
-            x, y, t = tf.split(1, 3, o_fc)
-            x_o = -50.0 * tf.sigmoid(x)
-            y_o = 50.0 * tf.sigmoid(x)
-            t_o = 4000.0 * (tf.sigmoid(t)-0.5)
+            # x, y, t = tf.split(1, 3, o_fc)
+            # x_o = -50.0 * tf.sigmoid(x)
+            # y_o = 50.0 * tf.sigmoid(y)
+            # t_o = 4000.0 * tf.sigmoid(t)
+            # if not isTargetNN:
+            #     self.summaries += [
+            #         tf.histogram_summary(tf.get_default_graph().unique_name(
+            #             'out' + '/x_coord_action',
+            #             mark_as_used=False), x_o),
+            #         tf.histogram_summary(tf.get_default_graph().unique_name(
+            #             'out' + '/y_coord_action',
+            #             mark_as_used=False), y_o),
+            #         tf.histogram_summary(tf.get_default_graph().unique_name(
+            #             'out' + '/time_delay_action',
+            #             mark_as_used=False), t_o)
+            #     ]
+            r, th, t = tf.split(1, 3, o_fc)
+            r_o = 50.0 * tf.sigmoid(r)
+            th_o = 9000.0 * tf.sigmoid(th)
+            t_o = 4000.0 * tf.sigmoid(t)
             if not isTargetNN:
                 self.summaries += [
                     tf.histogram_summary(tf.get_default_graph().unique_name(
-                        'out' + '/x_coord_action',
-                        mark_as_used=False), x_o),
+                        'out' + '/radius_action',
+                        mark_as_used=False), r_o),
                     tf.histogram_summary(tf.get_default_graph().unique_name(
-                        'out' + '/y_coord_action',
-                        mark_as_used=False), y_o),
+                        'out' + '/theta_action',
+                        mark_as_used=False), th_o),
                     tf.histogram_summary(tf.get_default_graph().unique_name(
                         'out' + '/time_delay_action',
                         mark_as_used=False), t_o)
@@ -137,7 +153,7 @@ class Actor:
                 self.nn_params,
                 # critic grad descent
                 # here ascent -> negative
-                self.critic_actions_gradient_pl)
+                -self.critic_actions_gradient_pl)
 
             return tf.train.AdamOptimizer(self.learning_rate).\
                 apply_gradients(zip(self.actor_gradients, self.nn_params))

@@ -42,7 +42,8 @@ class DrLBird(Driver):
             replay = ReplayBuffer(replayBufferSize)
 
             for e in range(maxEpisodes):
-                noise = OUNoise(3)
+                # noise = OUNoise(3)
+                noise = OUNoise(3, sigma=[1.5, 180.0, 90.0])
                 oldScore = 0
                 terminal = False
                 ep_reward = 0
