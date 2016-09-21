@@ -85,14 +85,16 @@ def convReluPoolLayer(inputs, inC, outC, fh=3, fw=3,
             tf.get_default_graph().unique_name(scopeName + '/activations',
                                                mark_as_used=False), conv)
         pool = max_pool_2x2(conv)
+        pool_n, s3 = tfu.batch_norm(pool, is_training=is_training)
 
         if isTargetNN:
             return pool, sw + sb
         else:
-            return pool, sw + sb + [s1]+ [s2]
+            return pool, sw + sb + [s1] + [s2] + [s3]
 
 
-def fullyConReluDrop(inputs, inC, outC, scopeName=None, isTargetNN=False):
+def fullyConReluDrop(inputs, inC, outC, scopeName=None, isTargetNN=False,
+                     is_training=None):
     with tf.variable_scope(scopeName) as scope:
         weights, sw = weight_variable([inC, outC], 'w')
         biases, sb = bias_variable([outC], 'b')
@@ -103,14 +105,34 @@ def fullyConReluDrop(inputs, inC, outC, scopeName=None, isTargetNN=False):
         s2 = tf.histogram_summary(tf.get_default_graph().unique_name(scopeName + '/activations',
                                            mark_as_used=False), fc)
         # keepprob = tf.placeholder(tf.float32)
+        fc_n, s3 = tfu.batch_norm(fc, is_training=is_training)
+        self.summaries += s
+
         drop = tf.nn.dropout(fc, 0.5)
 
         if isTargetNN:
             return drop, sw + sb
         else:
-            return drop, sw + sb + [s1] + [s2]
+            return drop, sw + sb + [s1] + [s2] + [s3]
 
 
 
 def mean_squared_diff(x, y):
     return tf.reduce_mean(tf.squared_difference(x, y))
+
+def batch_norm(inputs,
+               scopeName=None,
+               decay=0.999,
+               center=True,
+               scale=True,
+               epsilon=0.001,
+               updates_collections=None,
+               is_training=True):
+    bn = batch_norm(inputs, decay=decay, center=center, scale=scale,
+                    epsilon=epsilon,
+                    updates_collections=updates_collections,
+                    is_training=is_training)
+    s = tf.histogram_summary(
+        tf.get_default_graph().unique_name(scopeName + '/normalized',
+                                           mark_as_used=False), bn)
+    return bn, s

@@ -24,6 +24,8 @@ class Actor:
         self.summaries = []
 
         with tf.variable_scope('Actor'):
+            self.isTraining = tf.placeholder(tf.bool)
+
             # Actor Network
             prevTrainVarCount = len(tf.trainable_variables())
             print("actor 1: {}".format(prevTrainVarCount))
@@ -61,26 +63,33 @@ class Actor:
         x = tf.reshape(images, [-1, 448, 832, 1], name='deflatten')
         h1, s = tfu.convReluPoolLayer(x, 1, self.H1, fh=5, fw=5,
                                       scopeName='h1',
-                                      isTargetNN=isTargetNN)
+                                      isTargetNN=isTargetNN,
+                                      is_training=self.isTraining)
         self.summaries += s
         h2, s = tfu.convReluPoolLayer(h1, self.H1, self.H2, scopeName='h2',
-                                      isTargetNN=isTargetNN)
+                                      isTargetNN=isTargetNN,
+                                      is_training=self.isTraining)
         self.summaries += s
         h3, s = tfu.convReluPoolLayer(h2, self.H2, self.H3, scopeName='h3',
-                                      isTargetNN=isTargetNN)
+                                      isTargetNN=isTargetNN,
+                                      is_training=self.isTraining)
         self.summaries += s
         h4, s = tfu.convReluPoolLayer(h3, self.H3, self.H4, scopeName='h4',
-                                      isTargetNN=isTargetNN)
+                                      isTargetNN=isTargetNN,
+                                      is_training=self.isTraining)
         self.summaries += s
         h5, s = tfu.convReluPoolLayer(h4, self.H4, self.H5, scopeName='h5',
-                                      isTargetNN=isTargetNN)
+                                      isTargetNN=isTargetNN,
+                                      is_training=self.isTraining)
         self.summaries += s
         h6, s = tfu.convReluPoolLayer(h5, self.H5, self.H6, scopeName='h6',
-                                      isTargetNN=isTargetNN)
+                                      isTargetNN=isTargetNN,
+                                      is_training=self.isTraining)
         self.summaries += s
         h6_f = tf.reshape(h6, [-1, 7*13*self.H6], name='flatten')
         h7, s= tfu.fullyConReluDrop(h6_f, 7*13*self.H6, self.H7,
-                                    scopeName='h7', isTargetNN=isTargetNN)
+                                    scopeName='h7', isTargetNN=isTargetNN,
+                                    is_training=self.isTraining)
         self.summaries += s
 
         with tf.variable_scope('out') as scope:
@@ -164,7 +173,8 @@ class Actor:
                                          self.summary_op],
                                         feed_dict={
             self.input_pl: inputs,
-            self.critic_actions_gradient_pl: a_grad
+            self.critic_actions_gradient_pl: a_grad,
+            self.isTraining: True
         })
         self.writer.add_summary(summaries, step)
         self.writer.flush()
@@ -172,11 +182,13 @@ class Actor:
     def run_predict(self, inputs):
         return self.sess.run(self.nn, feed_dict={
             self.input_pl: inputs,
+            self.isTraining: False
         })
 
     def run_predict_target(self, inputs):
         return self.sess.run(self.target_nn, feed_dict={
-            self.target_input_pl: inputs
+            self.target_input_pl: inputs,
+            self.isTraining: False
         })
 
     def run_update_target_nn(self):
