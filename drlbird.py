@@ -58,7 +58,8 @@ class DrLBird(Driver):
                     state = self.preprocessDataForNN()
                     action, a_scaled = self.policy.getAction(state,
                                                              noise.noise())
-                    score, terminal, newState = self.actionResponse(a_scaled)
+                    score, terminal, newState = \
+                        self.actionResponse(a_scaled[0])
                     reward = score - oldScore
                     reward *= 0.0001
                     oldScore = score
@@ -117,7 +118,7 @@ class DrLBird(Driver):
 
             maxEpisodes = 1000
             replayBufferSize = 1000
-            miniBatchSize = 18
+            miniBatchSize = 8
             gamma = 0.999
             replay = ReplayBuffer(replayBufferSize)
 
@@ -141,7 +142,7 @@ class DrLBird(Driver):
                     reward = score - oldScore
                     reward *= 0.0001
                     oldScore = score
-                    replay.add(state, action, reward, terminal, newState)
+                    replay.add(state, a_scaled, reward, terminal, newState)
 
                     if replay.size() > miniBatchSize:
                         s_batch, a_batch, r_batch, t_batch, ns_batch =\

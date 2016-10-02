@@ -1,3 +1,5 @@
+import math
+
 import tensorflow as tf
 
 import tfUtils as tfu
@@ -28,14 +30,14 @@ class Actor:
 
             # Actor Network
             prevTrainVarCount = len(tf.trainable_variables())
-            print("actor 1: {}".format(prevTrainVarCount))
+            # print("actor 1: {}".format(prevTrainVarCount))
             self.input_pl, self.nn = self.defineNN()
             self.nn_params = tf.trainable_variables()[prevTrainVarCount:]
 
             # Target Network
             with tf.variable_scope('target'):
                 prevTrainVarCount = len(tf.trainable_variables())
-                print("actor 2: {}".format(prevTrainVarCount))
+                # print("actor 2: {}".format(prevTrainVarCount))
                 self.target_input_pl, self.target_nn = \
                     self.defineNN(isTargetNN=True)
                 self.target_nn_params = \
@@ -48,12 +50,13 @@ class Actor:
                 self.target_nn_update_op = self.define_update_target_nn_op()
 
             # Optimization Op
-            self.train_op = self.define_training()
+            self.loss_op = self.define_loss()
+            self.train_op = self.define_training(self.loss_op)
             self.summary_op = tf.merge_summary(self.summaries)
             self.writer = tf.train.SummaryWriter(out_dir, sess.graph)
-            print("actor 3: {}".format(len(tf.trainable_variables())))
-            print("actor params: {}".format(self.nn_params))
-            print("actortarget params: {}".format(self.target_nn_params))
+            # print("actor 3: {}".format(len(tf.trainable_variables())))
+            # print("actor params: {}".format(self.nn_params))
+            # print("actortarget params: {}".format(self.target_nn_params))
 
 
     def defineNN(self, isTargetNN=False):
@@ -160,28 +163,51 @@ class Actor:
                     tf.mul(self.target_nn_params[i], invtau))
                  for i in range(len(self.target_nn_params))]
 
-    def define_training(self):
+    def define_loss(self):
+        with tf.variable_scope('loss'):
+            self.x = tf.placeholder(tf.float32, [None, 3],
+                                    name='noisedActions')
+
+            mu, sigma = tf.split(1, 2, self.nn)
+            factor = tf.div(1.0, tf.sqrt(tf.mul(2*math.pi, sigma)))
+            exp = tf.exp(tf.div(-tf.square(self.x-mu), 2.0 * tf.square(sigma)))
+            E = tf.log(tf.mul(factor, exp))
+
+            lossL2 = tf.reduce_mean(E, 0)
+            self.summaries += [tf.scalar_summary('gaussianLoss1', lossL2[0]),
+                               tf.scalar_summary('gaussianLoss2', lossL2[1]),
+                               tf.scalar_summary('gaussianLoss3', lossL2[2])]
+        return lossL2
+
+    def define_training(self, loss):
         with tf.variable_scope('train'):
             self.critic_actions_gradient_pl = tf.placeholder(
                 tf.float32,
                 [None, self.actions_dim],
                 name='CriticActionsGradient')
+            # self.actor_gradients = tf.gradients(
+            #     loss,
+            #     self.nn_params,
+            #     # critic grad descent
+            #     # here ascent -> negative
+            #     -self.critic_actions_gradient_pl)
+
             self.actor_gradients = tf.gradients(
-                self.nn,
-                self.nn_params,
-                # critic grad descent
-                # here ascent -> negative
-                -self.critic_actions_gradient_pl)
+                tf.reduce_mean(tf.mul(-self.critic_actions_gradient_pl,
+                                      loss),
+                               0),
+                self.nn_params)
 
             return tf.train.AdamOptimizer(self.learning_rate).\
                 apply_gradients(zip(self.actor_gradients, self.nn_params))
 
-    def run_train(self, inputs, a_grad, step):
+    def run_train(self, inputs, a_grad, action, step):
         _, _, summaries = self.sess.run([self.nn,
                                          self.train_op,
                                          self.summary_op],
                                         feed_dict={
             self.input_pl: inputs,
+            self.x: action,
             self.critic_actions_gradient_pl: a_grad,
             self.isTraining: True
         })

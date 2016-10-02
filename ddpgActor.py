@@ -28,14 +28,14 @@ class Actor:
 
             # Actor Network
             prevTrainVarCount = len(tf.trainable_variables())
-            print("actor 1: {}".format(prevTrainVarCount))
+            # print("actor 1: {}".format(prevTrainVarCount))
             self.input_pl, self.nn = self.defineNN()
             self.nn_params = tf.trainable_variables()[prevTrainVarCount:]
 
             # Target Network
             with tf.variable_scope('target'):
                 prevTrainVarCount = len(tf.trainable_variables())
-                print("actor 2: {}".format(prevTrainVarCount))
+                # print("actor 2: {}".format(prevTrainVarCount))
                 self.target_input_pl, self.target_nn = \
                     self.defineNN(isTargetNN=True)
                 self.target_nn_params = \
@@ -51,9 +51,9 @@ class Actor:
             self.train_op = self.define_training()
             self.summary_op = tf.merge_summary(self.summaries)
             self.writer = tf.train.SummaryWriter(out_dir, sess.graph)
-            print("actor 3: {}".format(len(tf.trainable_variables())))
-            print("actor params: {}".format(self.nn_params))
-            print("actortarget params: {}".format(self.target_nn_params))
+            # print("actor 3: {}".format(len(tf.trainable_variables())))
+            # print("actor params: {}".format(self.nn_params))
+            # print("actortarget params: {}".format(self.target_nn_params))
 
 
     def defineNN(self, isTargetNN=False):
@@ -137,7 +137,16 @@ class Actor:
                         mark_as_used=False), th_o),
                     tf.histogram_summary(tf.get_default_graph().unique_name(
                         'out' + '/time_delay_action',
-                        mark_as_used=False), t_o)
+                        mark_as_used=False), t_o),
+                    tf.histogram_summary(tf.get_default_graph().unique_name(
+                        'out' + '/radius_action_before_sig',
+                        mark_as_used=False), r),
+                    tf.histogram_summary(tf.get_default_graph().unique_name(
+                        'out' + '/theta_action_before_sig',
+                        mark_as_used=False), th),
+                    tf.histogram_summary(tf.get_default_graph().unique_name(
+                        'out' + '/time_delay_action_before_sig',
+                        mark_as_used=False), t)
                 ]
         return images, outputs
 
@@ -158,11 +167,30 @@ class Actor:
                 [None, self.actions_dim],
                 name='CriticActionsGradient')
             self.actor_gradients = tf.gradients(
-                self.nn,
-                self.nn_params,
+                tf.reduce_mean(tf.mul(-self.critic_actions_gradient_pl,
+                                      self.nn),
+                               0),
+                self.nn_params
                 # critic grad descent
                 # here ascent -> negative
-                -self.critic_actions_gradient_pl)
+                )
+
+            # print(self.nn_params)
+            # for i in range(len(self.nn_params)):
+            #     print(self.nn_params[i].name)
+            #     print(self.actor_gradients[i])
+            #     print(tf.constant(10.0, dtype=tf.float32))
+            #     temp = tf.div(self.actor_gradients[i], tf.constant(10.0, dtype=tf.float32))
+
+            # self.actor_gradients = \
+            #     tf.truediv(
+            #         tf.gradients(
+            #             self.nn,
+            #             self.nn_params,
+            #             # critic grad descent
+            #             # here ascent -> negative
+            #             -self.critic_actions_gradient_pl),
+            #         tf.constant(self.mini_batch_size, dtype=tf.float32))
 
             return tf.train.AdamOptimizer(self.learning_rate).\
                 apply_gradients(zip(self.actor_gradients, self.nn_params))

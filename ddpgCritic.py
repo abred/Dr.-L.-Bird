@@ -29,14 +29,14 @@ class Critic:
 
             # Critic Network
             prevTrainVarCount = len(tf.trainable_variables())
-            print("critic 1: {}".format(prevTrainVarCount))
+            # print("critic 1: {}".format(prevTrainVarCount))
             self.input_pl, self.actions_pl, self.nn = self.defineNN()
             self.nn_params = tf.trainable_variables()[prevTrainVarCount:]
 
             # Target Network
             with tf.variable_scope('target'):
                 prevTrainVarCount = len(tf.trainable_variables())
-                print("critic 2: {}".format(prevTrainVarCount))
+                # print("critic 2: {}".format(prevTrainVarCount))
                 self.target_input_pl, self.target_actions_pl, self.target_nn =\
                     self.defineNN(isTargetNN=True)
                 self.target_nn_params = \
@@ -55,9 +55,9 @@ class Critic:
             self.action_grads = self.define_action_grad()
             self.summary_op = tf.merge_summary(self.summaries)
             self.writer = tf.train.SummaryWriter(out_dir, sess.graph)
-            print("critic 3: {}".format(prevTrainVarCount))
-            print("critic params: {}".format(self.nn_params))
-            print("critictarget params: {}".format(self.target_nn_params))
+            # print("critic 3: {}".format(prevTrainVarCount))
+            # print("critic params: {}".format(self.nn_params))
+            # print("critictarget params: {}".format(self.target_nn_params))
 
     def defineNN(self, isTargetNN=False):
         images = tf.placeholder(tf.float32,
@@ -101,7 +101,7 @@ class Critic:
         self.summaries += s
 
         with tf.variable_scope('out') as scope:
-            weights, sw = tfu.weight_variable_unit([self.H7, self.O], 'w')
+            weights, sw = tfu.weight_variable([self.H7, self.O], 'w')
             self.summaries += sw
             biases, sb = tfu.bias_variable([self.O], 'b')
             self.summaries += sb
@@ -139,7 +139,8 @@ class Critic:
                 tf.scalar_summary('mean_squared_diff_loss_with_reg',
                                   loss)]
 
-        return loss
+        # return loss
+        return lossL2
 
     def define_training(self, loss):
         with tf.variable_scope('train'):

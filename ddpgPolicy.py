@@ -18,8 +18,16 @@ class DDPGPolicy:
         a_scaled[0][2] *= 4000.0
         print("Next action: {}\n".format(a))
         print("Next action(scaled): {}\n".format(a_scaled))
-        a_scaled +=  noise
-        print("Next action(noised): {}\n".format(a_scaled))
+        epsilon = 0.1
+        if np.random.rand() < epsilon:
+            a_scaled[0][0] = np.random.rand() * 50.0
+            a_scaled[0][1] = np.random.rand() * 9000.0
+            a_scaled[0][2] = np.random.rand() * 4000.0
+            print("random action!\n")
+        print("Next action(e-greedy): {}\n".format(a_scaled))
+
+        # a_scaled +=  noise
+        # print("Next action(noised): {}\n".format(a_scaled))
 
         return a, a_scaled
 

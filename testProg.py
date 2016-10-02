@@ -14,6 +14,8 @@ d.getStatePrint()
 algo = 0
 if algo == 0:
     d.DDPG()
+elif algo == 3:
+    d.DSPG()
 elif algo == 1:
     d.REINFORCE()
 elif algo == 2:

@@ -249,7 +249,7 @@ class Driver:
         self.shoot(mid, fx, fy, dx, dy, t1, t2)
 
     def actionResponse(self, action):
-        self.act(action[0])
+        self.act(action)
         time.sleep(3)
         score = self.getCurrScore()
         time.sleep(11)

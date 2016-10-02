@@ -29,14 +29,14 @@ class Critic:
 
             # Critic Network
             prevTrainVarCount = len(tf.trainable_variables())
-            print("critic 1: {}".format(prevTrainVarCount))
+            # print("critic 1: {}".format(prevTrainVarCount))
             self.input_pl, self.actions_pl, self.nn = self.defineNN()
             self.nn_params = tf.trainable_variables()[prevTrainVarCount:]
 
             # Target Network
             with tf.variable_scope('target'):
                 prevTrainVarCount = len(tf.trainable_variables())
-                print("critic 2: {}".format(prevTrainVarCount))
+                # print("critic 2: {}".format(prevTrainVarCount))
                 self.target_input_pl, self.target_actions_pl, self.target_nn =\
                     self.defineNN(isTargetNN=True)
                 self.target_nn_params = \
@@ -55,9 +55,9 @@ class Critic:
             self.action_grads = self.define_action_grad()
             self.summary_op = tf.merge_summary(self.summaries)
             self.writer = tf.train.SummaryWriter(out_dir, sess.graph)
-            print("critic 3: {}".format(prevTrainVarCount))
-            print("critic params: {}".format(self.nn_params))
-            print("critictarget params: {}".format(self.target_nn_params))
+            # print("critic 3: {}".format(prevTrainVarCount))
+            # print("critic params: {}".format(self.nn_params))
+            # print("critictarget params: {}".format(self.target_nn_params))
 
     def defineNN(self, isTargetNN=False):
         images = tf.placeholder(tf.float32,
@@ -95,7 +95,8 @@ class Critic:
 
         h6_a = tf.concat(1, [tf.reshape(h6, [-1, 7*13*self.H6], name='flatten'),
                              actions])
-        h7, s = tfu.fullyConReluDrop(h6_a, 7*13*self.H6+3, self.H7,
+        h7, s = tfu.fullyConReluDrop(h6_a, 7*13*self.H6+self.actions_dim,
+                                     self.H7,
                                      scopeName='h7', isTargetNN=isTargetNN,
                                      is_training=self.isTraining)
         self.summaries += s
