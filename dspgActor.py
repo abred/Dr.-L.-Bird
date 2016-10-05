@@ -1,5 +1,7 @@
 import math
 
+import numpy as np
+
 import tensorflow as tf
 
 import tfUtils as tfu
@@ -170,14 +172,62 @@ class Actor:
 
             mu, sigma = tf.split(1, 2, self.nn)
             factor = tf.div(1.0, tf.sqrt(tf.mul(2*math.pi, sigma)))
-            exp = tf.exp(tf.div(-tf.square(self.x-mu), 2.0 * tf.square(sigma)))
-            E = tf.log(tf.mul(factor, exp))
+            expp1 = -tf.square(tf.div(self.x, [50.0, 9000.0, 4000.0])-mu)
+            expp2 = 2.0 * tf.square(sigma)
+            expp3 = tf.div(expp1, expp2)
+            exp = tf.exp(expp3)
+            mul = tf.mul(factor, exp)
+            E = tf.log(mul)
+
+            muTag = []
+            sigmaTag = []
+            eTag = []
+            xTag = []
+            fTag = []
+            expTag = []
+            exp1Tag = []
+            exp2Tag = []
+            exp3Tag = []
+            mulTag = []
+            for i in range(self.mini_batch_size):
+                muTag.append([])
+                sigmaTag.append([])
+                eTag.append([])
+                xTag.append([])
+                fTag.append([])
+                expTag.append([])
+                exp1Tag.append([])
+                exp2Tag.append([])
+                exp3Tag.append([])
+                mulTag.append([])
+                for j in range(3):
+                    muTag[i].append("mu" + str(i) + str(j))
+                    sigmaTag[i].append("sigma" + str(i) + str(j))
+                    eTag[i].append("e" + str(i) + str(j))
+                    xTag[i].append("x" + str(i) + str(j))
+                    fTag[i].append("f" + str(i) + str(j))
+                    expTag[i].append("exp" + str(i) + str(j))
+                    exp1Tag[i].append("exp1" + str(i) + str(j))
+                    exp2Tag[i].append("exp2" + str(i) + str(j))
+                    exp3Tag[i].append("exp3" + str(i) + str(j))
+                    mulTag[i].append("mul" + str(i) + str(j))
 
             lossL2 = tf.reduce_mean(E, 0)
             self.summaries += [tf.scalar_summary('gaussianLoss1', lossL2[0]),
                                tf.scalar_summary('gaussianLoss2', lossL2[1]),
-                               tf.scalar_summary('gaussianLoss3', lossL2[2])]
-        return lossL2
+                               tf.scalar_summary('gaussianLoss3', lossL2[2]),
+                               tf.scalar_summary(muTag, mu),
+                               tf.scalar_summary(sigmaTag, sigma),
+                               tf.scalar_summary(eTag, E),
+                               tf.scalar_summary(xTag, self.x),
+                               tf.scalar_summary(fTag, factor),
+                               tf.scalar_summary(expTag, exp),
+                               tf.scalar_summary(exp1Tag, expp1),
+                               tf.scalar_summary(exp2Tag, expp2),
+                               tf.scalar_summary(exp3Tag, expp3),
+                               tf.scalar_summary(mulTag, mul)
+            ]
+            return E
 
     def define_training(self, loss):
         with tf.variable_scope('train'):
@@ -185,18 +235,18 @@ class Actor:
                 tf.float32,
                 [None, self.actions_dim],
                 name='CriticActionsGradient')
-            # self.actor_gradients = tf.gradients(
-            #     loss,
-            #     self.nn_params,
-            #     # critic grad descent
-            #     # here ascent -> negative
-            #     -self.critic_actions_gradient_pl)
-
             self.actor_gradients = tf.gradients(
-                tf.reduce_mean(tf.mul(-self.critic_actions_gradient_pl,
-                                      loss),
-                               0),
-                self.nn_params)
+                loss,
+                self.nn_params,
+                # critic grad descent
+                # here ascent -> negative
+                -self.critic_actions_gradient_pl)
+
+            # self.actor_gradients = tf.gradients(
+            #     tf.reduce_mean(tf.mul(-self.critic_actions_gradient_pl,
+            #                           loss),
+                               # 0),
+                # self.nn_params)
 
             return tf.train.AdamOptimizer(self.learning_rate).\
                 apply_gradients(zip(self.actor_gradients, self.nn_params))

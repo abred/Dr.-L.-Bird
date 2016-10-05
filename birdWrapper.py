@@ -2,6 +2,10 @@ from ctypes import cdll
 lib = cdll.LoadLibrary('cffi/libbirdwrap.so')
 
 
+def calcLives():
+    return lib.calcLives()
+
+
 def processScreenShot(input, output, w, h):
     return lib.processScreenShot(input, output, w, h)
 
@@ -14,8 +18,8 @@ def getCurrScore(input, output, w, h):
     return lib.getCurrScore(input, output, w, h)
 
 
-def getEndScore(input, output, w, h):
-    return lib.getEndScore(input, output, w, h)
+def getEndScore(input, output, w, h, threshold):
+    return lib.getEndScore(input, output, w, h, threshold)
 
 
 def preprocessDataForNN(input, output, w, h):

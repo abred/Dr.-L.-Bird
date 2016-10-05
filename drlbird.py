@@ -53,13 +53,21 @@ class DrLBird(Driver):
 
                 step = 0
                 while not terminal:
-                    step += 1
+                    self.birdCnt = self.birdCount()
                     self.fillObs()
+                    self.findSlingshot()
+                    if self.currCenterX == 0:
+                        if self.getState() != 5:
+                            break
+                        else:
+                            continue
+                    step += 1
                     state = self.preprocessDataForNN()
                     action, a_scaled = self.policy.getAction(state,
                                                              noise.noise())
                     score, terminal, newState = \
                         self.actionResponse(a_scaled[0])
+
                     reward = score - oldScore
                     reward *= 0.0001
                     oldScore = score
@@ -133,8 +141,15 @@ class DrLBird(Driver):
 
                 step = 0
                 while not terminal:
-                    step += 1
+                    self.birdCnt = self.birdCount()
                     self.fillObs()
+                    self.findSlingshot()
+                    if self.currCenterX == 0:
+                        if self.getState() != 5:
+                            break
+                        else:
+                            continue
+                    step += 1
                     state = self.preprocessDataForNN()
                     action, a_scaled = self.policy.getAction(state,
                                                              noise.noise())

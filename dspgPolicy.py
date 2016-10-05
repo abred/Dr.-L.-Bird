@@ -16,9 +16,9 @@ class DSPGPolicy:
         a_scaled[0][0] *= 50.0
         a_scaled[0][1] *= 9000.0
         a_scaled[0][2] *= 4000.0
-        a_scaled[0][3] *= 50.0
-        a_scaled[0][4] *= 9000.0
-        a_scaled[0][5] *= 4000.0
+        a_scaled[0][3] *= 25.0
+        a_scaled[0][4] *= 4500.0
+        a_scaled[0][5] *= 2000.0
         mu = a_scaled[0][:3]
         sigma = a_scaled[0][3:]
         act = sigma * np.random.randn(3) + mu
@@ -27,6 +27,19 @@ class DSPGPolicy:
         print("Next action(sigma): {}\n".format(sigma))
         # a_scaled +=  noise
         print("Next action(noised): {}\n".format(act))
+
+        if act[0] < 0.0:
+            act[0] = 0.0
+        if act[1] < 0.0:
+            act[1] = 0.0
+        if act[2] < 0.0:
+            act[2] = 0.0
+        if act[0] > 50.0:
+            act[0] = 50.0
+        if act[1] > 9000.0:
+            act[1] = 9000.0
+        if act[2] > 4000.0:
+            act[2] = 4000.0
 
         return a, act
 

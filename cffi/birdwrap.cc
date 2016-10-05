@@ -159,8 +159,12 @@ int getCurrScore(int const* input, int* output, int width, int height) {
   return getScoreInGame(input, output, width, height);
 }
 
-int getEndScore(unsigned char const* input, int width, int height) {
-    return getScoreEndGame(input, width, height);
-  }
+int getEndScore(unsigned char const* input, int width, int height,
+                int threshold) {
+  return getScoreEndGame(input, width, height, threshold);
+}
 
+int calcLives() {
+  return calcBirdCount();
+}
 }

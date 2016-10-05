@@ -46,8 +46,11 @@ extern "C" {
 	                        int width,
 	                        int height);
 
+	int calcLives();
+
 	int getCurrScore(int const* input, int* output, int width, int height);
-	int getEndScore(unsigned char const* input, int width, int height);
+	int getEndScore(unsigned char const* input, int width, int height,
+	                int threshold);
 }
 
 
@@ -96,9 +99,17 @@ void findConnectedComponents(int* image,
 void findBoundingBoxes(int* image, int width, int height,
                        int numComp);
 
+std::list<Rectangle> findRedBirdsMBRs();
+std::list<Rectangle> findWhiteBirdsMBRs();
+std::list<Rectangle> findYellowBirdsMBRs();
+std::list<Rectangle> findBlueBirdsMBRs();
+std::list<Rectangle> findBlackBirdsMBRs();
+int calcBirdCount();
+
 int getScoreInGame(int const* screenshot, int* output, int width, int height);
 int countToDigitInGame(int count);
-int getScoreEndGame(unsigned char const* screenshot, int width, int height);
+int getScoreEndGame(unsigned char const* screenshot, int width, int height,
+                    int threshold);
 int countToDigitEndGame(int count);
 
 #endif  // BIRDWRAP_H

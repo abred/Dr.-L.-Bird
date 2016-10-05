@@ -16,6 +16,7 @@ class Driver:
     def __init__(self, soc):
         self.enc = Encoder(soc)
         self.dec = Decoder(soc)
+        self.birdCnt = 0
 
     """
     Configuration
@@ -78,15 +79,26 @@ class Driver:
         w, h, rawInput = self.takeScreenshot()
         dataTemp = np.zeros((32, 100), dtype=np.int32)
         score = lib.getEndScore(rawInput,#ctypes.c_void_p(rawInput.data),
-                                 # ctypes.c_void_p(dataTemp.ctypes.data),
-                                 ctypes.c_int(self.width),
-                                 ctypes.c_int(self.height))
+                                # ctypes.c_void_p(dataTemp.ctypes.data),
+                                ctypes.c_int(self.width),
+                                ctypes.c_int(self.height),
+                                ctypes.c_int(110))
         # print("End Score: {}".format(score))
         # dataTemp = dataTemp * 100000
         # im = Image.fromarray(dataTemp, mode='I')
         # print("Shape: {}".format(im.size))
         # im.save("endScore.png")
 
+        if score < 0 or score > 100000:
+            self.fillObs()
+            dataTemp = np.zeros((32, 200), dtype=np.int32)
+            score = lib.getEndScore(rawInput,
+                                    ctypes.c_int(self.width),
+                                    ctypes.c_int(self.height),
+                                    ctypes.c_int(100))
+
+        if score < 0:
+            score = 0
         return score
 
 
@@ -192,9 +204,11 @@ class Driver:
                               ctypes.c_int(self.height))
         # temp = np.copy(self.data)
         # temp = temp * 100
+        # temp = np.reshape(temp, (h,w))
         # im = Image.fromarray(temp, mode='I')
         # print("Shape: {}".format(im.size))
-        # im.save("test2.png")
+        # self.birdCnt += 1
+        # im.save("test" + str(self.testcnt) + ".png")
         # print("end fillobs")
 
         return self.data
@@ -214,12 +228,25 @@ class Driver:
                                          self.width, self.height)
         self.currCenterX = linPos % self.width
         self.currCenterY = math.floor(linPos/self.width)
+        print("Current slingshot position: {}, {}".format(self.currCenterX,
+                                                          self.currCenterY))
 
+
+
+    def birdCount(self):
+        self.zoomIn()
+        self.fillObs()
+        # self.findSlingshot()
+        # while self.currCenterY == 0 and self.currCenterX == 0:
+        #     self.clickCenter()
+        #     self.findSlingshot()
+        self.birdCnt = lib.calcLives()
+        self.zoomOut()
+        print("bird count: {}".format(self.birdCnt))
+        return self.birdCnt
 
     def actManually(self):
         self.findSlingshot()
-        print("Current slingshot position: {}, {}".format(self.currCenterX,
-                                                          self.currCenterY))
 
         mid = int(input("Shot type: "))
         # fx = int(input("x-coord: "))
@@ -234,11 +261,9 @@ class Driver:
         self.shoot(mid, fx, fy, dx, dy, t1, t2)
 
     def act(self, action):
-        self.findSlingshot()
-        print("Current slingshot position: {}, {}".format(self.currCenterX,
-                                                          self.currCenterY))
+        # self.findSlingshot()
         print("action: {}".format(action))
-        mid = 2
+        mid = 4
         fx = self.currCenterX
         fy = self.currCenterY
         dx = action[0]
@@ -250,9 +275,13 @@ class Driver:
 
     def actionResponse(self, action):
         self.act(action)
-        time.sleep(3)
+        time.sleep(2)
         score = self.getCurrScore()
-        time.sleep(11)
+        if self.birdCnt <= 1:
+            for i in range(7):
+                time.sleep(2)
+                if self.getState() != 5:
+                    break
 
         self.fillObs()
         newState = self.preprocessDataForNN()
