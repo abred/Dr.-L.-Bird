@@ -17,7 +17,7 @@ from replay_buffer import ReplayBuffer
 class DrLBird(Driver):
     # policy = GaussianPolicy()
 
-    def DDPG(self):
+    def DDPG(self, resume=False):
         with tf.Session() as sess:
             episode_reward = tf.Variable(0., name="episodeReward")
             tf.scalar_summary("Reward", episode_reward)
@@ -28,8 +28,11 @@ class DrLBird(Driver):
 
             timestamp = str(int(time.time()))
             out_dir = os.path.abspath(os.path.join(os.path.curdir,
-                                                   "runs", timestamp))
+                                                   "runsDDPG", timestamp))
             print("Summaries will be written to: {}\n".format(out_dir))
+
+            self.global_step = tf.Variable(0, name='global_step',
+                                           trainable=False)
 
             self.policy = DDPGPolicy(sess, out_dir)
             writer = tf.train.SummaryWriter(out_dir, sess.graph)
@@ -41,6 +44,11 @@ class DrLBird(Driver):
             miniBatchSize = 8
             gamma = 0.99
             replay = ReplayBuffer(replayBufferSize)
+
+            self.saver = tf.train.Saver()
+            if resume:
+                self.saver.restore(sess, tf.train.latest_checkpoint(out_dir))
+                print("Model restored.")
 
             for e in range(maxEpisodes):
                 # noise = OUNoise(3)
@@ -105,7 +113,13 @@ class DrLBird(Driver):
                       format(ep_reward, e,
                              ep_ave_max_q / float(step)))
 
-    def DSPG(self):
+                if (e+1) % 50 == 0:
+                    save_path = self.saver.save(sess,
+                                                out_dir + "/model.ckpt",
+                                                global_step=self.global_step)
+                    print("Model saved in file: %s" % save_path)
+
+    def DSPG(self, resume=False):
         with tf.Session() as sess:
             episode_reward = tf.Variable(0., name="episodeReward")
             tf.scalar_summary("Reward", episode_reward)
@@ -116,8 +130,11 @@ class DrLBird(Driver):
 
             timestamp = str(int(time.time()))
             out_dir = os.path.abspath(os.path.join(os.path.curdir,
-                                                   "runs", timestamp))
+                                                   "runsDSPG", timestamp))
             print("Summaries will be written to: {}\n".format(out_dir))
+
+            self.global_step = tf.Variable(0, name='global_step',
+                                           trainable=False)
 
             self.policy = DSPGPolicy(sess, out_dir)
             writer = tf.train.SummaryWriter(out_dir, sess.graph)
@@ -129,6 +146,11 @@ class DrLBird(Driver):
             miniBatchSize = 8
             gamma = 0.999
             replay = ReplayBuffer(replayBufferSize)
+
+            self.saver = tf.train.Saver()
+            if resume:
+                self.saver.restore(sess, tf.train.latest_checkpoint(out_dir))
+                print("Model restored.")
 
             for e in range(maxEpisodes):
                 # noise = OUNoise(3)
@@ -190,6 +212,13 @@ class DrLBird(Driver):
                 print('| Reward: {}, | Episode {}, | Qmax: {}'.
                       format(ep_reward, e,
                              ep_ave_max_q / float(step)))
+
+                if (e+1) % 50 == 0:
+                    save_path = self.saver.save(sess,
+                                                out_dir + "/model.ckpt",
+                                                global_step=self.global_step)
+                    print("Model saved in file: %s" % save_path)
+
 
     def REINFORCE(self):
         self.policy = GaussianPolicy()

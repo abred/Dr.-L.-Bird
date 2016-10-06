@@ -20,10 +20,11 @@ class Critic:
     actions_dim = 3
     weight_decay = 0.001
 
-    def __init__(self, sess, out_dir):
+    def __init__(self, sess, out_dir, glStep):
         self.sess = sess
         self.summaries = []
 
+        self.global_step = glStep
         with tf.variable_scope('Critic'):
             self.isTraining = tf.placeholder(tf.bool)
 
@@ -145,8 +146,6 @@ class Critic:
     def define_training(self, loss):
         with tf.variable_scope('train'):
             optimizer = tf.train.AdamOptimizer(self.learning_rate)
-            self.global_step = tf.Variable(0, name='global_step',
-                                           trainable=False)
             train_op = optimizer.minimize(loss,
                                           global_step=self.global_step)
             return train_op

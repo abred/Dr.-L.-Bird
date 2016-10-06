@@ -6,9 +6,9 @@ from dspgCritic import Critic
 
 
 class DSPGPolicy:
-    def __init__(self, sess, out_dir, resume=False):
+    def __init__(self, sess, out_dir, glStep):
         self.actor = Actor(sess, out_dir)
-        self.critic = Critic(sess, out_dir)
+        self.critic = Critic(sess, out_dir, glStep)
 
     def getAction(self, state, noise):
         a = self.actor.run_predict(state)
