@@ -26,11 +26,15 @@ def weight_variable_conv(shape, name):
     summaries = variable_summaries(var, name)
     return var, summaries
 
-def bias_variable(shape, name):
-    val = 1.0 / math.sqrt(shape[0])
+def bias_variable(shape, name, minV=None, maxV=None):
+    if minV is None:
+        minV = - 1.0 / math.sqrt(shape[0])
+    if maxV is None:
+        maxV = 1.0 / math.sqrt(shape[0])
     var = tf.get_variable(
         name, shape=shape,
-        initializer=tf.random_uniform_initializer(minval=-val, maxval=val))
+        initializer=tf.random_uniform_initializer(minval=minV,
+                                                  maxval=maxV))
     summaries = variable_summaries(var, name)
     return var, summaries
 
@@ -77,6 +81,7 @@ def convReluPoolLayer(inputs, inC, outC, fh=3, fw=3,
         weights, sw = weight_variable_conv([fh, fw, inC, outC], 'w')
         biases, sb = bias_variable([outC], 'b')
         preactivate = conv2d(inputs, weights) + biases
+        # preactivate = conv2d(inputs, weights)
         s1 = tf.histogram_summary(
             tf.get_default_graph().unique_name(
                 scopeName + '/pre_activation',
@@ -89,9 +94,9 @@ def convReluPoolLayer(inputs, inC, outC, fh=3, fw=3,
         pool_n, s3 = batch_norm(pool, is_training=is_training, scopeName=scopeName)
 
         if isTargetNN:
-            return pool, sw + sb
+            return pool_n, sw + sb
         else:
-            return pool, sw + sb + [s1] + [s2] + [s3]
+            return pool_n, sw + sb + [s1] + [s2] + [s3]
 
 
 def fullyConReluDrop(inputs, inC, outC, scopeName=None, isTargetNN=False,
@@ -100,6 +105,7 @@ def fullyConReluDrop(inputs, inC, outC, scopeName=None, isTargetNN=False,
         weights, sw = weight_variable([inC, outC], 'w')
         biases, sb = bias_variable([outC], 'b')
         preactivate = tf.matmul(inputs, weights) + biases
+        # preactivate = tf.matmul(inputs, weights)
         s1 = tf.histogram_summary(tf.get_default_graph().unique_name(scopeName + '/pre_activation',
                                            mark_as_used=False), preactivate)
         fc = tf.nn.relu(preactivate)
@@ -108,7 +114,7 @@ def fullyConReluDrop(inputs, inC, outC, scopeName=None, isTargetNN=False,
         # keepprob = tf.placeholder(tf.float32)
         fc_n, s3 = batch_norm(fc, is_training=is_training, scopeName=scopeName)
 
-        drop = tf.nn.dropout(fc, 0.5)
+        drop = tf.nn.dropout(fc_n, 0.5)
 
         if isTargetNN:
             return drop, sw + sb

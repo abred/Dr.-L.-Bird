@@ -6,10 +6,11 @@ from drlbird import *
 soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 soc.connect(("127.0.0.1", 2004))
 d = DrLBird(soc)
-
+print("test1")
 d.configure(421337, True)
+print("test2")
 d.getStatePrint()
-
+print("test3")
 # TEST
 
 algo = 3

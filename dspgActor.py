@@ -98,10 +98,17 @@ class Actor:
         self.summaries += s
 
         with tf.variable_scope('out') as scope:
-            weights, sw = tfu.weight_variable_unit([self.H7, self.O], 'w')
+            wmu, sw = tfu.weight_variable([self.H7, self.O/2], 'wMu')
             self.summaries += sw
-            biases, sb = tfu.bias_variable([self.O], 'b')
+            wsd, sw = tfu.weight_variable([self.H7, self.O/2], 'wSd')
+            self.summaries += sw
+            weights = tf.concat(1, [wmu, wsd])
+            bmu, sb = tfu.bias_variable([self.O/2], 'bmu')
             self.summaries += sb
+            bsd, sb = tfu.bias_variable([self.O/2], 'bsd')
+                                        # , minV=-2.5, maxV=1.0)
+            self.summaries += sb
+            biases = tf.concat(0, [bmu, bsd])
             o_fc = tf.matmul(h7, weights) + biases
             if not isTargetNN:
                 self.summaries += [
@@ -111,27 +118,14 @@ class Actor:
                             mark_as_used=False), o_fc)
                 ]
 
-            outputs = tf.sigmoid(o_fc)
-            # x, y, t = tf.split(1, 3, o_fc)
-            # x_o = -50.0 * tf.sigmoid(x)
-            # y_o = 50.0 * tf.sigmoid(y)
-            # t_o = 4000.0 * tf.sigmoid(t)
-            # if not isTargetNN:
-            #     self.summaries += [
-            #         tf.histogram_summary(tf.get_default_graph().unique_name(
-            #             'out' + '/x_coord_action',
-            #             mark_as_used=False), x_o),
-            #         tf.histogram_summary(tf.get_default_graph().unique_name(
-            #             'out' + '/y_coord_action',
-            #             mark_as_used=False), y_o),
-            #         tf.histogram_summary(tf.get_default_graph().unique_name(
-            #             'out' + '/time_delay_action',
-            #             mark_as_used=False), t_o)
-            #     ]
+            # outputs = tf.sigmoid(o_fc)
             r, th, t, rsd, thsd, tsd = tf.split(1, 6, o_fc)
             r_o = 50.0 * tf.sigmoid(r)
             th_o = 9000.0 * tf.sigmoid(th)
             t_o = 4000.0 * tf.sigmoid(t)
+            rsd_o = 25.0 * tf.sigmoid(rsd)
+            thsd_o = 9000.0 * tf.sigmoid(thsd)
+            tsd_o = 4000.0 * tf.sigmoid(tsd)
             if not isTargetNN:
                 self.summaries += [
                     tf.histogram_summary(tf.get_default_graph().unique_name(
@@ -153,6 +147,7 @@ class Actor:
                         'out' + '/sd_time_delay_action',
                         mark_as_used=False), tsd)
                 ]
+            outputs = tf.concat(1, [r_o, th_o, t_o, rsd_o, thsd_o, tsd_o])
         return images, outputs
 
     def define_update_target_nn_op(self):
@@ -172,7 +167,8 @@ class Actor:
 
             mu, sigma = tf.split(1, 2, self.nn)
             factor = tf.div(1.0, tf.sqrt(tf.mul(2*math.pi, sigma)))
-            expp1 = -tf.square(tf.div(self.x, [50.0, 9000.0, 4000.0])-mu)
+            # expp1 = -tf.square(tf.div(self.x, [50.0, 9000.0, 4000.0])-mu)
+            expp1 = -tf.square(self.x-mu)
             expp2 = 2.0 * tf.square(sigma)
             expp3 = tf.div(expp1, expp2)
             exp = tf.exp(expp3)
@@ -201,16 +197,16 @@ class Actor:
                 exp3Tag.append([])
                 mulTag.append([])
                 for j in range(3):
-                    muTag[i].append("mu" + str(i) + str(j))
-                    sigmaTag[i].append("sigma" + str(i) + str(j))
-                    eTag[i].append("e" + str(i) + str(j))
-                    xTag[i].append("x" + str(i) + str(j))
-                    fTag[i].append("f" + str(i) + str(j))
-                    expTag[i].append("exp" + str(i) + str(j))
-                    exp1Tag[i].append("exp1" + str(i) + str(j))
-                    exp2Tag[i].append("exp2" + str(i) + str(j))
-                    exp3Tag[i].append("exp3" + str(i) + str(j))
-                    mulTag[i].append("mul" + str(i) + str(j))
+                    muTag[i].append("mu" + str(i) + "_" + str(j))
+                    sigmaTag[i].append("sigma" + str(i) + "_" + str(j))
+                    eTag[i].append("e" + str(i) + "_" + str(j))
+                    xTag[i].append("x" + str(i) + "_" + str(j))
+                    fTag[i].append("f" + str(i) + "_" + str(j))
+                    expTag[i].append("exp" + str(i) + "_" + str(j))
+                    exp1Tag[i].append("exp1_" + str(i) + "_" + str(j))
+                    exp2Tag[i].append("exp2_" + str(i) + "_" + str(j))
+                    exp3Tag[i].append("exp3_" + str(i) + "_" + str(j))
+                    mulTag[i].append("mul" + str(i) + "_" + str(j))
 
             lossL2 = tf.reduce_mean(E, 0)
             self.summaries += [tf.scalar_summary('gaussianLoss1', lossL2[0]),

@@ -188,7 +188,8 @@ class Critic:
     def run_get_action_gradients(self, inputs, actions):
         return self.sess.run(self.action_grads, feed_dict={
             self.input_pl: inputs,
-            self.actions_pl: actions
+            self.actions_pl: actions,
+            self.isTraining: False
         })
 
     def run_update_target_nn(self):

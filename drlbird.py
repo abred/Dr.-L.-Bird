@@ -34,7 +34,7 @@ class DrLBird(Driver):
             self.global_step = tf.Variable(0, name='global_step',
                                            trainable=False)
 
-            self.policy = DDPGPolicy(sess, out_dir)
+            self.policy = DDPGPolicy(sess, out_dir, self.global_step)
             writer = tf.train.SummaryWriter(out_dir, sess.graph)
 
             sess.run(tf.initialize_all_variables())
@@ -42,7 +42,7 @@ class DrLBird(Driver):
             maxEpisodes = 1000
             replayBufferSize = 1000
             miniBatchSize = 8
-            gamma = 0.99
+            gamma = 0.999
             replay = ReplayBuffer(replayBufferSize)
 
             self.saver = tf.train.Saver()
@@ -136,7 +136,7 @@ class DrLBird(Driver):
             self.global_step = tf.Variable(0, name='global_step',
                                            trainable=False)
 
-            self.policy = DSPGPolicy(sess, out_dir)
+            self.policy = DSPGPolicy(sess, out_dir, self.global_step)
             writer = tf.train.SummaryWriter(out_dir, sess.graph)
 
             sess.run(tf.initialize_all_variables())
@@ -159,7 +159,8 @@ class DrLBird(Driver):
                 terminal = False
                 ep_reward = 0
                 ep_ave_max_q = 0
-                self.loadRandLevel()
+                # self.loadRandLevel()
+                self.loadLevel(1)
 
                 step = 0
                 while not terminal:
@@ -188,7 +189,7 @@ class DrLBird(Driver):
                         qValsNewState = self.policy.predict_target_nn(ns_batch)
                         y_batch = np.zeros((miniBatchSize, 1))
                         for i in range(miniBatchSize):
-                            if t_batch[i] == terminal:
+                            if t_batch[i]:
                                 y_batch[i] = r_batch[i]
                             else:
                                 y_batch[i] = r_batch[i] + \
