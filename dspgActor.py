@@ -1,26 +1,21 @@
 import math
 
-import numpy as np
-
 import tensorflow as tf
 
 import tfUtils as tfu
 
 
 class Actor:
-    I = 832 * 448
     O = 6
-    H1 = 32
-    H2 = 64
-    H3 = 128
-    H4 = 256
-    H5 = 512
-    H6 = 512
-    H7 = 1024
-    learning_rate = 0.0001
-    mini_batch_size = 8
+    H1 = 16
+    H2 = 32
+    H3 = 256
+    learning_rate = 0.000001
+    mini_batch_size = 16
     tau = 0.001
     train_dir = 'data'
+    state_dim_x = 105
+    state_dim_y = 60
     actions_dim = 3
 
     def __init__(self, sess, out_dir):
@@ -32,14 +27,12 @@ class Actor:
 
             # Actor Network
             prevTrainVarCount = len(tf.trainable_variables())
-            # print("actor 1: {}".format(prevTrainVarCount))
             self.input_pl, self.nn = self.defineNN()
             self.nn_params = tf.trainable_variables()[prevTrainVarCount:]
 
             # Target Network
             with tf.variable_scope('target'):
                 prevTrainVarCount = len(tf.trainable_variables())
-                # print("actor 2: {}".format(prevTrainVarCount))
                 self.target_input_pl, self.target_nn = \
                     self.defineNN(isTargetNN=True)
                 self.target_nn_params = \
@@ -56,98 +49,49 @@ class Actor:
             self.train_op = self.define_training(self.loss_op)
             self.summary_op = tf.merge_summary(self.summaries)
             self.writer = tf.train.SummaryWriter(out_dir, sess.graph)
-            # print("actor 3: {}".format(len(tf.trainable_variables())))
-            # print("actor params: {}".format(self.nn_params))
-            # print("actortarget params: {}".format(self.target_nn_params))
-
 
     def defineNN(self, isTargetNN=False):
-        images = tf.placeholder(tf.float32,
-                                shape=[None, 448*832],
-                                name='input')
-        x = tf.reshape(images, [-1, 448, 832, 1], name='deflatten')
-        h1, s = tfu.convReluPoolLayer(x, 1, self.H1, fh=5, fw=5,
-                                      scopeName='h1',
-                                      isTargetNN=isTargetNN,
-                                      is_training=self.isTraining)
+        images = tf.placeholder(
+            tf.float32,
+            shape=[None, self.state_dim_x*self.state_dim_y],
+            name='input')
+        x = tf.reshape(images, [-1,
+                                self.state_dim_y,
+                                self.state_dim_x,
+                                1],
+                       name='deflatten')
+
+        h1, s = tfu.convReluLayer(x,
+                                  1, self.H1,
+                                  fh=8, fw=8,
+                                  strh=4, strw=4,
+                                  scopeName='h1',
+                                  isTargetNN=isTargetNN,
+                                  is_training=self.isTraining)
         self.summaries += s
-        h2, s = tfu.convReluPoolLayer(h1, self.H1, self.H2, scopeName='h2',
-                                      isTargetNN=isTargetNN,
-                                      is_training=self.isTraining)
+        h2, s = tfu.convReluLayer(h1,
+                                  self.H1, self.H2,
+                                  fh=4, fw=4,
+                                  strh=2, strw=2,
+                                  scopeName='h2',
+                                  isTargetNN=isTargetNN,
+                                  is_training=self.isTraining)
         self.summaries += s
-        h3, s = tfu.convReluPoolLayer(h2, self.H2, self.H3, scopeName='h3',
-                                      isTargetNN=isTargetNN,
-                                      is_training=self.isTraining)
-        self.summaries += s
-        h4, s = tfu.convReluPoolLayer(h3, self.H3, self.H4, scopeName='h4',
-                                      isTargetNN=isTargetNN,
-                                      is_training=self.isTraining)
-        self.summaries += s
-        h5, s = tfu.convReluPoolLayer(h4, self.H4, self.H5, scopeName='h5',
-                                      isTargetNN=isTargetNN,
-                                      is_training=self.isTraining)
-        self.summaries += s
-        h6, s = tfu.convReluPoolLayer(h5, self.H5, self.H6, scopeName='h6',
-                                      isTargetNN=isTargetNN,
-                                      is_training=self.isTraining)
-        self.summaries += s
-        h6_f = tf.reshape(h6, [-1, 7*13*self.H6], name='flatten')
-        h7, s= tfu.fullyConReluDrop(h6_f, 7*13*self.H6, self.H7,
-                                    scopeName='h7', isTargetNN=isTargetNN,
-                                    is_training=self.isTraining)
+        h2_f = tf.reshape(h2, [-1, 14*8*self.H2], name='flatten')
+        h3, s = tfu.fullyConRelu(h2_f,
+                                 8*14*self.H2, self.H3,
+                                 scopeName='h3', isTargetNN=isTargetNN,
+                                 is_training=self.isTraining)
         self.summaries += s
 
-        with tf.variable_scope('out') as scope:
-            wmu, sw = tfu.weight_variable([self.H7, self.O/2], 'wMu')
-            self.summaries += sw
-            wsd, sw = tfu.weight_variable([self.H7, self.O/2], 'wSd')
-            self.summaries += sw
-            weights = tf.concat(1, [wmu, wsd])
-            bmu, sb = tfu.bias_variable([self.O/2], 'bmu')
-            self.summaries += sb
-            bsd, sb = tfu.bias_variable([self.O/2], 'bsd')
-                                        # , minV=-2.5, maxV=1.0)
-            self.summaries += sb
-            biases = tf.concat(0, [bmu, bsd])
-            o_fc = tf.matmul(h7, weights) + biases
-            if not isTargetNN:
-                self.summaries += [
-                    tf.histogram_summary(
-                        tf.get_default_graph().unique_name(
-                            'out' + '/pre_activation',
-                            mark_as_used=False), o_fc)
-                ]
-
-            # outputs = tf.sigmoid(o_fc)
-            r, th, t, rsd, thsd, tsd = tf.split(1, 6, o_fc)
-            r_o = 50.0 * tf.sigmoid(r)
-            th_o = 9000.0 * tf.sigmoid(th)
-            t_o = 4000.0 * tf.sigmoid(t)
-            rsd_o = 25.0 * tf.sigmoid(rsd)
-            thsd_o = 9000.0 * tf.sigmoid(thsd)
-            tsd_o = 4000.0 * tf.sigmoid(tsd)
-            if not isTargetNN:
-                self.summaries += [
-                    tf.histogram_summary(tf.get_default_graph().unique_name(
-                        'out' + '/radius_action',
-                        mark_as_used=False), r_o),
-                    tf.histogram_summary(tf.get_default_graph().unique_name(
-                        'out' + '/theta_action',
-                        mark_as_used=False), th_o),
-                    tf.histogram_summary(tf.get_default_graph().unique_name(
-                        'out' + '/time_delay_action',
-                        mark_as_used=False), t_o),
-                    tf.histogram_summary(tf.get_default_graph().unique_name(
-                        'out' + '/sd_radius_action',
-                        mark_as_used=False), rsd),
-                    tf.histogram_summary(tf.get_default_graph().unique_name(
-                        'out' + '/sd_theta_action',
-                        mark_as_used=False), thsd),
-                    tf.histogram_summary(tf.get_default_graph().unique_name(
-                        'out' + '/sd_time_delay_action',
-                        mark_as_used=False), tsd)
-                ]
-            outputs = tf.concat(1, [r_o, th_o, t_o, rsd_o, thsd_o, tsd_o])
+        o, s = tfu.fullyCon(h3, self.H3, self.O,
+                            scopeName='out', isTargetNN=isTargetNN,
+                            is_training=self.isTraining)
+        self.summaries += s
+        mu, var = tf.split(1, 2, o, name='split_mu_var')
+        var = tf.nn.softplus(var, name='softplus_var')
+        var = tf.maximum(var, 1.0)
+        outputs = tf.concat(1, [mu, var])
         return images, outputs
 
     def define_update_target_nn_op(self):
@@ -165,96 +109,100 @@ class Actor:
             self.x = tf.placeholder(tf.float32, [None, 3],
                                     name='noisedActions')
 
-            mu, sigma = tf.split(1, 2, self.nn)
-            factor = tf.div(1.0, tf.sqrt(tf.mul(2*math.pi, sigma)))
-            # expp1 = -tf.square(tf.div(self.x, [50.0, 9000.0, 4000.0])-mu)
-            expp1 = -tf.square(self.x-mu)
-            expp2 = 2.0 * tf.square(sigma)
-            expp3 = tf.div(expp1, expp2)
-            exp = tf.exp(expp3)
-            mul = tf.mul(factor, exp)
-            E = tf.log(mul)
+            mu, var = tf.split(1, 2, self.nn)
+            factor = tf.div(1.0, tf.sqrt(tf.mul(2*math.pi, var)))
+            numerator = -tf.square(self.x-mu)
+            denominator = 2.0 * var
+            fraction = tf.div(numerator, denominator)
+            exp = tf.exp(fraction)
+            normal = tf.mul(factor, exp)
+            unterschied jetztiges mean damalige action zu gross ->
+            prob gauss gegen 0 ->
+            log 0 -> inf
+            E = tf.log(normal)
 
             muTag = []
-            sigmaTag = []
+            varTag = []
             eTag = []
             xTag = []
-            fTag = []
+            factorTag = []
+            numeratorTag = []
+            denominatorTag = []
+            fractionTag = []
+            normalTag = []
             expTag = []
-            exp1Tag = []
-            exp2Tag = []
-            exp3Tag = []
-            mulTag = []
             for i in range(self.mini_batch_size):
                 muTag.append([])
-                sigmaTag.append([])
+                varTag.append([])
                 eTag.append([])
                 xTag.append([])
-                fTag.append([])
+                factorTag.append([])
+                numeratorTag.append([])
+                denominatorTag.append([])
+                fractionTag.append([])
+                normalTag.append([])
                 expTag.append([])
-                exp1Tag.append([])
-                exp2Tag.append([])
-                exp3Tag.append([])
-                mulTag.append([])
                 for j in range(3):
                     muTag[i].append("mu" + str(i) + "_" + str(j))
-                    sigmaTag[i].append("sigma" + str(i) + "_" + str(j))
+                    varTag[i].append("var" + str(i) + "_" + str(j))
                     eTag[i].append("e" + str(i) + "_" + str(j))
                     xTag[i].append("x" + str(i) + "_" + str(j))
-                    fTag[i].append("f" + str(i) + "_" + str(j))
+                    factorTag[i].append("factor" + str(i) + "_" + str(j))
+                    numeratorTag[i].append("numerator" + str(i) + "_" + str(j))
+                    denominatorTag[i].append(
+                        "denominator" + str(i) + "_" + str(j))
+                    fractionTag[i].append("fraction" + str(i) + "_" + str(j))
+                    normalTag[i].append("normal" + str(i) + "_" + str(j))
                     expTag[i].append("exp" + str(i) + "_" + str(j))
-                    exp1Tag[i].append("exp1_" + str(i) + "_" + str(j))
-                    exp2Tag[i].append("exp2_" + str(i) + "_" + str(j))
-                    exp3Tag[i].append("exp3_" + str(i) + "_" + str(j))
-                    mulTag[i].append("mul" + str(i) + "_" + str(j))
 
             lossL2 = tf.reduce_mean(E, 0)
             self.summaries += [tf.scalar_summary('gaussianLoss1', lossL2[0]),
                                tf.scalar_summary('gaussianLoss2', lossL2[1]),
                                tf.scalar_summary('gaussianLoss3', lossL2[2]),
                                tf.scalar_summary(muTag, mu),
-                               tf.scalar_summary(sigmaTag, sigma),
+                               tf.scalar_summary(varTag, var),
                                tf.scalar_summary(eTag, E),
                                tf.scalar_summary(xTag, self.x),
-                               tf.scalar_summary(fTag, factor),
-                               tf.scalar_summary(expTag, exp),
-                               tf.scalar_summary(exp1Tag, expp1),
-                               tf.scalar_summary(exp2Tag, expp2),
-                               tf.scalar_summary(exp3Tag, expp3),
-                               tf.scalar_summary(mulTag, mul)
-            ]
+                               tf.scalar_summary(factorTag, factor),
+                               tf.scalar_summary(numeratorTag, numerator),
+                               tf.scalar_summary(denominatorTag, denominator),
+                               tf.scalar_summary(fractionTag, fraction),
+                               tf.scalar_summary(normalTag, normal),
+                               tf.scalar_summary(expTag, exp)]
             return E
 
     def define_training(self, loss):
         with tf.variable_scope('train'):
-            self.critic_actions_gradient_pl = tf.placeholder(
+            self.critic_advantage_pl = tf.placeholder(
                 tf.float32,
-                [None, self.actions_dim],
-                name='CriticActionsGradient')
+                [None, 1],
+                name='CriticAdvantage')
             self.actor_gradients = tf.gradients(
                 loss,
                 self.nn_params,
-                # critic grad descent
-                # here ascent -> negative
-                -self.critic_actions_gradient_pl)
+                self.critic_advantage_pl)
 
-            # self.actor_gradients = tf.gradients(
-            #     tf.reduce_mean(tf.mul(-self.critic_actions_gradient_pl,
-            #                           loss),
-                               # 0),
-                # self.nn_params)
+            # for g,v in zip(self.actor_gradients, self.nn_params):
+            #     sz = tf.size(g)
+            #     gradTag = []
+            #     for i in range(sz):
+            #         gradTag.append('grad'+v.name+str(i))
+            #     gradTagTens = tf.convert_to_tensor(gradTag)
+            #     tf.reshape(gradTagTens, tf.shape(g))
+            #     self.summaries.append(tf.scalar_summary(gradTagTens, g))
 
-            return tf.train.AdamOptimizer(self.learning_rate).\
-                apply_gradients(zip(self.actor_gradients, self.nn_params))
+            return self.actor_gradients
+            # return tf.train.AdamOptimizer(self.learning_rate).\
+                # apply_gradients(zip(self.actor_gradients, self.nn_params))
 
-    def run_train(self, inputs, a_grad, action, step):
+    def run_train(self, inputs, advantage, action, step):
         _, _, summaries = self.sess.run([self.nn,
                                          self.train_op,
                                          self.summary_op],
                                         feed_dict={
             self.input_pl: inputs,
             self.x: action,
-            self.critic_actions_gradient_pl: a_grad,
+            self.critic_advantage_pl: advantage,
             self.isTraining: True
         })
         self.writer.add_summary(summaries, step)
