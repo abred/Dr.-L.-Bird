@@ -10,32 +10,27 @@ class DDPGPolicy:
         self.actor = Actor(sess, out_dir)
         self.critic = Critic(sess, out_dir, glStep)
 
-    def getAction(self, state, noise):
+    def getActions(self, state):
         a = self.actor.run_predict(state)
-        a_scaled = np.copy(a)
-        a_scaled[0][0] *= 50.0
-        a_scaled[0][1] *= 9000.0
-        a_scaled[0][2] *= 4000.0
-        print("Next action: {}\n".format(a))
-        print("Next action(scaled): {}\n".format(a_scaled))
-        epsilon = 0.1
-        if np.random.rand() < epsilon:
-            a_scaled[0][0] = np.random.rand() * 50.0
-            a_scaled[0][1] = np.random.rand() * 9000.0
-            a_scaled[0][2] = np.random.rand() * 4000.0
-            print("random action!\n")
-        print("Next action(e-greedy): {}\n".format(a_scaled))
-
-        # a_scaled +=  noise
-        # print("Next action(noised): {}\n".format(a_scaled))
-
-        return a, a_scaled
+        return a
 
     def update(self, states, actions, targets):
         step = self.critic.run_train(states, actions, targets)
+        print("STEP: {}".format(step))
+        print("actions:", actions)
+        print("targets", targets)
         ac = self.actor.run_predict(states)
-        a_grad = self.critic.run_get_action_gradients(states, ac)
-        print("action gradients: {}".format(a_grad[0]))
+        print("predict actions: {}".format(ac))
+        print("state shape {}".format(states.shape))
+        middle, q, a_grad = self.critic.run_get_action_gradients(states, ac)
+        print("middle: {}".format(middle))
+        print("critic q: {}".format(q))
+        print("action gradients: {}".format(a_grad))
+        print("{} {} {} {} {}".format(a_grad[0][0] == a_grad[0][1],
+                                      a_grad[0][2] == a_grad[0][3],
+                                      a_grad[0][4] == a_grad[0][6],
+                                      a_grad[0][0] - a_grad[0][1],
+                                      a_grad[0][2] == a_grad[0][3]))
         self.actor.run_train(states, a_grad[0], step)
 
     def update_targets(self):

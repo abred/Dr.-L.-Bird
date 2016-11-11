@@ -13,7 +13,7 @@ d.getStatePrint()
 print("test3")
 # TEST
 
-algo = 3
+algo = 0
 if algo == 0:
     d.DDPG()
 elif algo == 3:

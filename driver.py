@@ -10,7 +10,7 @@ from decoder import *
 from encoder import *
 
 import numpy as np
-
+import scipy.ndimage
 
 class Driver:
     def __init__(self, soc):
@@ -68,10 +68,10 @@ class Driver:
                                  ctypes.c_int(self.width),
                                  ctypes.c_int(self.height))
         print("Current Score: {}".format(score))
-        dataTemp = dataTemp * 10000
-        im = Image.fromarray(dataTemp, mode='I')
+        # dataTemp = dataTemp * 10000
+        # im = Image.fromarray(dataTemp, mode='I')
         # print("Shape: {}".format(im.size))
-        im.save("currScore.png")
+        # im.save("currScore.png")
 
         return score
 
@@ -211,16 +211,21 @@ class Driver:
         # im.save("test" + str(self.testcnt) + ".png")
         # print("end fillobs")
 
+        self.data.shape = (h, w)
         return self.data
 
     def preprocessDataForNN(self):
         # self.dataNN = np.zeros((self.height * self.width), dtype=np.float)
-        self.dataNN = np.zeros((1, 448 * 832), dtype=np.float)
+        # self.dataNN = np.zeros((1, 448 * 832), dtype=np.float)
 
-        lib.preprocessDataForNN(ctypes.c_void_p(self.data.ctypes.data),
-                                ctypes.c_void_p(self.dataNN.ctypes.data),
-                                ctypes.c_int(self.width),
-                                ctypes.c_int(self.height))
+        # lib.preprocessDataForNN(ctypes.c_void_p(self.data.ctypes.data),
+        #                         ctypes.c_void_p(self.dataNN.ctypes.data),
+        #                         ctypes.c_int(self.width),
+        #                         ctypes.c_int(self.height))
+        # return self.dataNN
+        self.dataNN = self.data.astype(np.float32) / 512.0
+        self.dataNN = scipy.ndimage.zoom(self.dataNN, 0.125, order=1)
+        self.dataNN.shape = (1, self.height * self.width / 8 / 8)
         return self.dataNN
 
     def findSlingshot(self):
@@ -274,11 +279,14 @@ class Driver:
         self.shoot(mid, fx, fy, dx, dy, t1, t2)
 
     def actionResponse(self, action):
-        self.act(action)
-        time.sleep(2)
         score = self.getCurrScore()
+        self.act(action)
+        time.sleep(0.5)
+        scoreTmp = self.getCurrScore()
+        if scoreTmp >= score:
+            score = scoreTmp
         if self.birdCnt <= 1:
-            for i in range(7):
+            for i in range(4):
                 time.sleep(2)
                 if self.getState() != 5:
                     break

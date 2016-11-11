@@ -1,22 +1,21 @@
+import math
+
 import tensorflow as tf
 
 import tfUtils as tfu
 
 
 class Actor:
-    I = 832 * 448
     O = 3
-    H1 = 32
-    H2 = 64
-    H3 = 128
-    H4 = 256
-    H5 = 512
-    H6 = 512
-    H7 = 1024
+    H1 = 16
+    H2 = 32
+    H3 = 256
     learning_rate = 0.0001
-    mini_batch_size = 8
+    mini_batch_size = 16
     tau = 0.001
     train_dir = 'data'
+    state_dim_x = 105
+    state_dim_y = 60
     actions_dim = 3
 
     def __init__(self, sess, out_dir):
@@ -28,14 +27,12 @@ class Actor:
 
             # Actor Network
             prevTrainVarCount = len(tf.trainable_variables())
-            # print("actor 1: {}".format(prevTrainVarCount))
             self.input_pl, self.nn = self.defineNN()
             self.nn_params = tf.trainable_variables()[prevTrainVarCount:]
 
             # Target Network
             with tf.variable_scope('target'):
                 prevTrainVarCount = len(tf.trainable_variables())
-                # print("actor 2: {}".format(prevTrainVarCount))
                 self.target_input_pl, self.target_nn = \
                     self.defineNN(isTargetNN=True)
                 self.target_nn_params = \
@@ -49,105 +46,74 @@ class Actor:
 
             # Optimization Op
             self.train_op = self.define_training()
-            self.summary_op = tf.merge_summary(self.summaries)
+            summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope="Actor")
+            self.summary_op = tf.merge_summary(summaries)
             self.writer = tf.train.SummaryWriter(out_dir, sess.graph)
-            # print("actor 3: {}".format(len(tf.trainable_variables())))
-            # print("actor params: {}".format(self.nn_params))
-            # print("actortarget params: {}".format(self.target_nn_params))
-
 
     def defineNN(self, isTargetNN=False):
-        images = tf.placeholder(tf.float32,
-                                shape=[None, 448*832],
-                                name='input')
-        x = tf.reshape(images, [-1, 448, 832, 1], name='deflatten')
-        h1, s = tfu.convReluPoolLayer(x, 1, self.H1, fh=5, fw=5,
-                                      scopeName='h1',
-                                      isTargetNN=isTargetNN,
-                                      is_training=self.isTraining)
+        images = tf.placeholder(
+            tf.float32,
+            shape=[None, self.state_dim_x*self.state_dim_y],
+            name='input')
+        x = tf.reshape(images, [-1,
+                                self.state_dim_y,
+                                self.state_dim_x,
+                                1],
+                       name='deflatten')
+
+        h1, s = tfu.convReluLayer(x,
+                                  1, self.H1,
+                                  fh=8, fw=8,
+                                  strh=4, strw=4,
+                                  scopeName='h1',
+                                  isTargetNN=isTargetNN,
+                                  is_training=self.isTraining)
         self.summaries += s
-        h2, s = tfu.convReluPoolLayer(h1, self.H1, self.H2, scopeName='h2',
-                                      isTargetNN=isTargetNN,
-                                      is_training=self.isTraining)
+        h2, s = tfu.convReluLayer(h1,
+                                  self.H1, self.H2,
+                                  fh=4, fw=4,
+                                  strh=2, strw=2,
+                                  scopeName='h2',
+                                  isTargetNN=isTargetNN,
+                                  is_training=self.isTraining)
         self.summaries += s
-        h3, s = tfu.convReluPoolLayer(h2, self.H2, self.H3, scopeName='h3',
-                                      isTargetNN=isTargetNN,
-                                      is_training=self.isTraining)
-        self.summaries += s
-        h4, s = tfu.convReluPoolLayer(h3, self.H3, self.H4, scopeName='h4',
-                                      isTargetNN=isTargetNN,
-                                      is_training=self.isTraining)
-        self.summaries += s
-        h5, s = tfu.convReluPoolLayer(h4, self.H4, self.H5, scopeName='h5',
-                                      isTargetNN=isTargetNN,
-                                      is_training=self.isTraining)
-        self.summaries += s
-        h6, s = tfu.convReluPoolLayer(h5, self.H5, self.H6, scopeName='h6',
-                                      isTargetNN=isTargetNN,
-                                      is_training=self.isTraining)
-        self.summaries += s
-        h6_f = tf.reshape(h6, [-1, 7*13*self.H6], name='flatten')
-        h7, s= tfu.fullyConReluDrop(h6_f, 7*13*self.H6, self.H7,
-                                    scopeName='h7', isTargetNN=isTargetNN,
-                                    is_training=self.isTraining)
+        h2_f = tf.reshape(h2, [-1, 14*8*self.H2], name='flatten')
+        h3, s = tfu.fullyConRelu(h2_f,
+                                 8*14*self.H2, self.H3,
+                                 scopeName='h3', isTargetNN=isTargetNN,
+                                 is_training=self.isTraining)
         self.summaries += s
 
-        with tf.variable_scope('out') as scope:
-            weights, sw = tfu.weight_variable_unit([self.H7, self.O], 'w')
-            self.summaries += sw
-            biases, sb = tfu.bias_variable([self.O], 'b')
-            self.summaries += sb
-            o_fc = tf.matmul(h7, weights) + biases
-            if not isTargetNN:
-                self.summaries += [
-                    tf.histogram_summary(
-                        tf.get_default_graph().unique_name(
-                            'out' + '/pre_activation',
-                            mark_as_used=False), o_fc)
-                ]
-
-            outputs = tf.sigmoid(o_fc)
-            # x, y, t = tf.split(1, 3, o_fc)
-            # x_o = -50.0 * tf.sigmoid(x)
-            # y_o = 50.0 * tf.sigmoid(y)
-            # t_o = 4000.0 * tf.sigmoid(t)
-            # if not isTargetNN:
-            #     self.summaries += [
-            #         tf.histogram_summary(tf.get_default_graph().unique_name(
-            #             'out' + '/x_coord_action',
-            #             mark_as_used=False), x_o),
-            #         tf.histogram_summary(tf.get_default_graph().unique_name(
-            #             'out' + '/y_coord_action',
-            #             mark_as_used=False), y_o),
-            #         tf.histogram_summary(tf.get_default_graph().unique_name(
-            #             'out' + '/time_delay_action',
-            #             mark_as_used=False), t_o)
-            #     ]
-            r, th, t = tf.split(1, 3, o_fc)
-            r_o = 50.0 * tf.sigmoid(r)
-            th_o = 9000.0 * tf.sigmoid(th)
-            t_o = 4000.0 * tf.sigmoid(t)
-            if not isTargetNN:
-                self.summaries += [
-                    tf.histogram_summary(tf.get_default_graph().unique_name(
-                        'out' + '/radius_action',
-                        mark_as_used=False), r_o),
-                    tf.histogram_summary(tf.get_default_graph().unique_name(
-                        'out' + '/theta_action',
-                        mark_as_used=False), th_o),
-                    tf.histogram_summary(tf.get_default_graph().unique_name(
-                        'out' + '/time_delay_action',
-                        mark_as_used=False), t_o),
-                    tf.histogram_summary(tf.get_default_graph().unique_name(
-                        'out' + '/radius_action_before_sig',
-                        mark_as_used=False), r),
-                    tf.histogram_summary(tf.get_default_graph().unique_name(
-                        'out' + '/theta_action_before_sig',
-                        mark_as_used=False), th),
-                    tf.histogram_summary(tf.get_default_graph().unique_name(
-                        'out' + '/time_delay_action_before_sig',
-                        mark_as_used=False), t)
-                ]
+        o, s = tfu.fullyCon(h3, self.H3, self.O,
+                            scopeName='out', isTargetNN=isTargetNN,
+                            is_training=self.isTraining)
+        self.summaries += s
+        r, th, t = tf.split(1, 3, o)
+        r_o = 50.0 * tf.sigmoid(r)
+        th_o = 9000.0 * tf.sigmoid(th)
+        t_o = 4000.0 * tf.sigmoid(t)
+        if not isTargetNN:
+            self.summaries += [
+                tf.histogram_summary(tf.get_default_graph().unique_name(
+                    'out' + '/radius_action',
+                    mark_as_used=False), r_o),
+                tf.histogram_summary(tf.get_default_graph().unique_name(
+                    'out' + '/theta_action',
+                    mark_as_used=False), th_o),
+                tf.histogram_summary(tf.get_default_graph().unique_name(
+                    'out' + '/time_delay_action',
+                    mark_as_used=False), t_o),
+                tf.histogram_summary(tf.get_default_graph().unique_name(
+                    'out' + '/radius_action_before_sig',
+                    mark_as_used=False), r),
+                tf.histogram_summary(tf.get_default_graph().unique_name(
+                    'out' + '/theta_action_before_sig',
+                    mark_as_used=False), th),
+                tf.histogram_summary(tf.get_default_graph().unique_name(
+                    'out' + '/time_delay_action_before_sig',
+                    mark_as_used=False), t)
+            ]
+        outputs = tf.concat(1, [r_o, th_o, t_o])
         return images, outputs
 
     def define_update_target_nn_op(self):
