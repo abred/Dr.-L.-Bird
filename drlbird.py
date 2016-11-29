@@ -18,7 +18,7 @@ from replay_buffer import ReplayBuffer
 class DrLBird(Driver):
     # policy = GaussianPolicy()
 
-    def DDPG(self, resume=False):
+    def DDPG(self, resume=False, out_dir=None):
 
 
         with tf.Session() as sess:
@@ -29,9 +29,10 @@ class DrLBird(Driver):
             summary_vars = [episode_reward, episode_ave_max_q]
             summary_ops = tf.merge_all_summaries()
 
-            timestamp = str(int(time.time()))
-            out_dir = os.path.abspath(os.path.join(os.path.curdir,
-                                                   "runsDDPG", timestamp))
+            if not resume:
+                timestamp = str(int(time.time()))
+                out_dir = os.path.abspath(os.path.join(os.path.curdir,
+                                                       "runsDDPG", timestamp))
             print("Summaries will be written to: {}\n".format(out_dir))
 
             self.global_step = tf.Variable(0, name='global_step',
@@ -40,6 +41,7 @@ class DrLBird(Driver):
             self.policy = DDPGPolicy(sess, out_dir, self.global_step)
             writer = tf.train.SummaryWriter(out_dir, sess.graph)
 
+            self.cno = tf.add_check_numerics_ops()
             sess.run(tf.initialize_all_variables())
 
             maxEpisodes = 100000
@@ -48,9 +50,11 @@ class DrLBird(Driver):
             gamma = 0.99
             replay = ReplayBuffer(replayBufferSize)
             epsilon = 0.2
+            explT = 50
 
             self.saver = tf.train.Saver()
             if resume:
+                explT = 0
                 self.saver.restore(sess, tf.train.latest_checkpoint(out_dir))
                 print("Model restored.")
 
@@ -76,7 +80,7 @@ class DrLBird(Driver):
                             continue
                     step += 1
                     state = self.preprocessDataForNN()
-                    if e < 50 or np.random.rand() < epsilon:
+                    if e < explT and np.random.rand() < epsilon:
                         action = np.array([[np.random.rand() * 50.0,
                                             np.random.rand() * 9000.0,
                                             np.random.rand() * 4000.0]])
@@ -104,6 +108,7 @@ class DrLBird(Driver):
 
                         qValsNewState = self.policy.predict_target_nn(ns_batch)
                         print("target qs: {}".format(qValsNewState))
+                        print("t_batch: {}".format(t_batch))
                         y_batch = np.zeros((miniBatchSize, 1))
                         for i in range(miniBatchSize):
                             if t_batch[i]:

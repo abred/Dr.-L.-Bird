@@ -1,5 +1,6 @@
 import time
 import socket
+import sys
 from driver import *
 from drlbird import *
 
@@ -15,7 +16,12 @@ print("test3")
 
 algo = 0
 if algo == 0:
-    d.DDPG()
+    if len(sys.argv) > 1:
+        print("resuming... ", sys.argv[1])
+        d.DDPG(resume=True, out_dir=sys.argv[1])
+    else:
+        print("new start...")
+        d.DDPG()
 elif algo == 3:
     d.DSPG()
 elif algo == 1:

@@ -78,10 +78,10 @@ class Actor:
                                   is_training=self.isTraining)
         self.summaries += s
         h2_f = tf.reshape(h2, [-1, 14*8*self.H2], name='flatten')
-        h3, s = tfu.fullyConRelu(h2_f,
-                                 8*14*self.H2, self.H3,
-                                 scopeName='h3', isTargetNN=isTargetNN,
-                                 is_training=self.isTraining)
+        h3, s, _ = tfu.fullyConRelu(h2_f,
+                                    8*14*self.H2, self.H3,
+                                    scopeName='h3', isTargetNN=isTargetNN,
+                                    is_training=self.isTraining)
         self.summaries += s
 
         o, s = tfu.fullyCon(h3, self.H3, self.O,
@@ -140,20 +140,27 @@ class Actor:
                 -self.critic_actions_gradient_pl
                 )
 
-            return tf.train.AdamOptimizer(self.learning_rate).\
+            return tf.train.AdamOptimizer(self.learning_rate, epsilon=0.1).\
                 apply_gradients(zip(self.actor_gradients, self.nn_params))
 
     def run_train(self, inputs, a_grad, step):
-        _, _, summaries = self.sess.run([self.nn,
-                                         self.train_op,
-                                         self.summary_op],
-                                        feed_dict={
-            self.input_pl: inputs,
-            self.critic_actions_gradient_pl: a_grad,
-            self.isTraining: True
-        })
-        self.writer.add_summary(summaries, step)
-        self.writer.flush()
+        if (step+1) % 10 == 0:
+            _, summaries = self.sess.run([self.train_op,
+                                          self.summary_op],
+                                         feed_dict={
+                self.input_pl: inputs,
+                self.critic_actions_gradient_pl: a_grad,
+                self.isTraining: True
+            })
+            self.writer.add_summary(summaries, step)
+            self.writer.flush()
+        else:
+            self.sess.run([self.train_op],
+                          feed_dict={
+                self.input_pl: inputs,
+                self.critic_actions_gradient_pl: a_grad,
+                self.isTraining: True
+            })
 
     def run_predict(self, inputs):
         return self.sess.run(self.nn, feed_dict={
