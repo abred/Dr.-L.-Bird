@@ -153,7 +153,8 @@ def fullyConReluDrop(inputs, inC, outC, scopeName=None, isTargetNN=False,
         if isTargetNN:
             fc = tf.nn.relu(preactivate)
             fc_n, _ = batch_norm(fc, is_training=is_training,
-                                 scopeName=scopeName, isTargetNN=isTargetNN)
+                                 scopeName=scopeName, isTargetNN=isTargetNN,
+                                 outC=outc)
 
             drop = tf.nn.dropout(fc_n, 0.5)
             return drop, sw + sb
@@ -168,7 +169,8 @@ def fullyConReluDrop(inputs, inC, outC, scopeName=None, isTargetNN=False,
                                                    mark_as_used=False), fc)
             # keepprob = tf.placeholder(tf.float32)
             fc_n, s3 = batch_norm(fc, is_training=is_training,
-                                  scopeName=scopeName, isTargetNN=isTargetNN)
+                                  scopeName=scopeName, isTargetNN=isTargetNN,
+                                  outC=outC)
 
             drop = tf.nn.dropout(fc_n, 0.5)
             return drop, sw + sb + [s1] + [s2] + [s3]
@@ -179,7 +181,7 @@ def fullyConRelu(inputs, inC, outC, scopeName=None, isTargetNN=False,
     with tf.variable_scope(scopeName):
         weights, sw = weight_variable([inC, outC], 'w')
         # weights = tf.Print(weights, [weights], message=tf.get_default_graph().unique_name(scopeName)+"weights: ", summarize=1000)
-        # weights = tf.check_numerics(weights, tf.get_default_graph().unique_name(scopeName)+"weights: ")
+        weights = tf.check_numerics(weights, tf.get_default_graph().unique_name(scopeName)+"weights: ")
         biases, sb = bias_variable([outC], 'b')
         # biases = tf.Print(biases, [biases], message=tf.get_default_graph().unique_name(scopeName)+"biases: ", summarize=1000)
         biases = tf.check_numerics(biases, tf.get_default_graph().unique_name(scopeName)+"biases: ")
@@ -188,8 +190,9 @@ def fullyConRelu(inputs, inC, outC, scopeName=None, isTargetNN=False,
         if isTargetNN:
             fc = tf.nn.relu(preactivate)
             fc_n, _ = batch_norm(fc, is_training=is_training,
-                                 scopeName=scopeName, isTargetNN=isTargetNN)
-            return fc_n, sw + sb, weights
+                                 scopeName=scopeName, isTargetNN=isTargetNN,
+                                 outC=outC)
+            return fc_n, sw + sb, weights, biases
         else:
             s1 = tf.histogram_summary(
                 tf.get_default_graph().unique_name(
@@ -200,8 +203,9 @@ def fullyConRelu(inputs, inC, outC, scopeName=None, isTargetNN=False,
                 tf.get_default_graph().unique_name(scopeName + '/activations',
                                                    mark_as_used=False), fc)
             fc_n, s3 = batch_norm(fc, is_training=is_training,
-                                  scopeName=scopeName, isTargetNN=isTargetNN)
-            return fc_n, sw + sb + [s1] + [s2] + [s3], weights
+                                  scopeName=scopeName, isTargetNN=isTargetNN,
+                                  outC=outC)
+            return fc_n, sw + sb + [s1] + [s2] + [s3], weights, biases
 
 
 def fullyCon(inputs, inC, outC, scopeName=None, isTargetNN=False,
@@ -231,12 +235,22 @@ def batch_norm(inputs,
                epsilon=0.001,
                updates_collections=None,
                is_training=True,
-               isTargetNN=False):
+               isTargetNN=False,
+               outC=None):
+    original_shape = inputs.get_shape()
+    original_rank = original_shape.ndims
+    if original_rank == 2:
+        inputs = tf.reshape(inputs, [-1, 1, 1, outC], name="bnreshapebugi")
     bn = tf.contrib.layers.batch_norm(inputs, decay=decay, center=center,
                                       scale=scale, scope=scopeName,
                                       epsilon=epsilon,
                                       updates_collections=updates_collections,
-                                      is_training=is_training)
+                                      variables_collections=['batchnorm'],
+                                      is_training=is_training,
+                                      fused=True)
+    if original_rank == 2:
+        bn = tf.reshape(bn, [-1, outC], name="bnreshapebugo")
+
     if not isTargetNN:
         s = tf.histogram_summary(
             tf.get_default_graph().unique_name(scopeName + '/normalized',

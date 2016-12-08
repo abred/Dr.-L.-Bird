@@ -2,7 +2,7 @@ import ctypes
 import math
 import time
 
-from PIL import Image
+# from PIL import Image
 
 from birdWrapper import *
 
@@ -17,6 +17,7 @@ class Driver:
         self.enc = Encoder(soc)
         self.dec = Decoder(soc)
         self.birdCnt = 0
+        self.data = np.zeros((480 * 840), dtype=np.int32)
 
     """
     Configuration
@@ -115,14 +116,14 @@ class Driver:
     """
     def shoot(self, mid, fx, fy, dx, dy, t1, t2):
         if mid == 1:
-            self.cartSafeShot(fx, fy, dx, dy, t1, t2)
+            return self.cartSafeShot(fx, fy, dx, dy, t1, t2)
         elif mid == 2:
-            self.cartFastShot(fx, fy, dx, dy, t1, t2)
+            return self.cartFastShot(fx, fy, dx, dy, t1, t2)
             # time.sleep(5)
         elif mid == 3:
-            self.polarSafeShot(fx, fy, dx, dy, t1, t2)
+            return self.polarSafeShot(fx, fy, dx, dy, t1, t2)
         else:
-            self.polarFastShot(fx, fy, dx, dy, t1, t2)
+            return self.polarFastShot(fx, fy, dx, dy, t1, t2)
             # time.sleep(5)
 
     def cartSafeShot(self, fx, fy, dx, dy, t1, t2):
@@ -187,19 +188,19 @@ class Driver:
     """
     Process data
     """
-    def fillObs(self):
+    def fillObs(self, comp=False):
         w, h, rawInput = self.takeScreenshot()
         # print("w: {} h: {}".format(w, h))
         npInput = np.frombuffer(rawInput, np.dtype(np.uint8))
         # print("Shape: {}".format(npInput.shape))
         npInput = np.reshape(npInput, (h, w, 3))
 
-        self.data = np.zeros((h * w), dtype=np.int32)
+        data = np.zeros((h * w), dtype=np.int32)
 
         self.height = h
         self.width = w
         lib.processScreenShot(ctypes.c_void_p(npInput.ctypes.data),
-                              ctypes.c_void_p(self.data.ctypes.data),
+                              ctypes.c_void_p(data.ctypes.data),
                               ctypes.c_int(self.width),
                               ctypes.c_int(self.height))
         # temp = np.copy(self.data)
@@ -211,7 +212,14 @@ class Driver:
         # im.save("test" + str(self.testcnt) + ".png")
         # print("end fillobs")
 
-        self.data.shape = (h, w)
+        data.shape = (h, w)
+        if comp:
+            if np.array_equal(data, self.data):
+                print("-->> SAME <<--")
+            else:
+                print("-->> DIFFERENT <<--")
+
+        self.data = data
         return self.data
 
     def preprocessDataForNN(self):
@@ -239,14 +247,14 @@ class Driver:
 
 
     def birdCount(self):
-        self.zoomIn()
-        self.fillObs()
+        print("zoomin", self.zoomIn())
+        self.fillObs(comp=True)
         # self.findSlingshot()
         # while self.currCenterY == 0 and self.currCenterX == 0:
         #     self.clickCenter()
         #     self.findSlingshot()
         self.birdCnt = lib.calcLives()
-        self.zoomOut()
+        print("zoomout", self.zoomOut())
         print("bird count: {}".format(self.birdCnt))
         return self.birdCnt
 
@@ -263,7 +271,7 @@ class Driver:
         t1 = int(input("time0: "))
         t2 = int(input("time1: "))
 
-        self.shoot(mid, fx, fy, dx, dy, t1, t2)
+        print("shoot", self.shoot(mid, fx, fy, dx, dy, t1, t2))
 
     def act(self, action):
         # self.findSlingshot()
@@ -276,12 +284,13 @@ class Driver:
         t1 = 0
         t2 = action[2]
 
-        self.shoot(mid, fx, fy, dx, dy, t1, t2)
+        
+        print("shoot", self.shoot(mid, fx, fy, dx, dy, t1, t2))
 
     def actionResponse(self, action):
         score = self.getCurrScore()
         self.act(action)
-        time.sleep(0.5)
+        time.sleep(3)
         scoreTmp = self.getCurrScore()
         if scoreTmp >= score:
             score = scoreTmp
@@ -301,9 +310,11 @@ class Driver:
         elif gameState == 6:  # won
             score = self.getEndScore()
             terminal = True
+            print("WON")
         elif gameState == 7:  # lost
             # score = -10000
             terminal = True
+            print("LOST")
         else:
             raise Exception("should not get here")
 

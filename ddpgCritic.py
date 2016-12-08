@@ -20,6 +20,7 @@ class Critic:
     def __init__(self, sess, out_dir, glStep):
         self.sess = sess
         self.summaries = []
+        self.out_dir = out_dir
 
         self.global_step = glStep
         with tf.variable_scope('Critic'):
@@ -95,12 +96,16 @@ class Critic:
             tf.reshape(h2, [-1, 14*8*self.H2], name='flatten'),
             actions])
 
-        h3, s, w = tfu.fullyConRelu(h2_a,
+        h3, s, w, b = tfu.fullyConRelu(h2_a,
                                     8*14*self.H2+self.actions_dim, self.H3,
                                     scopeName='h3', isTargetNN=isTargetNN,
                                     is_training=self.isTraining)
         if not isTargetNN:
             self.w = w
+            self.h3 = h3
+            self.h2 = h2_a
+            self.h1 = h1
+            self.b = b
         h3 = tf.check_numerics(h3, str(isTargetNN)+"critic h3: ")
         self.summaries += s
 

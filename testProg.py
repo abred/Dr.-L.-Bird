@@ -5,7 +5,7 @@ from driver import *
 from drlbird import *
 
 soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-soc.connect(("127.0.0.1", 2004))
+soc.connect(("taurusi1193", 2004))
 d = DrLBird(soc)
 print("test1")
 d.configure(421337, True)

@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 
 import numpy as np
@@ -31,8 +32,8 @@ class DrLBird(Driver):
 
             if not resume:
                 timestamp = str(int(time.time()))
-                out_dir = os.path.abspath(os.path.join(os.path.curdir,
-                                                       "runsDDPG", timestamp))
+                out_dir = os.path.abspath(os.path.join(
+                    '/scratch/s7550245/Dr.-L.-Bird', "runsDDPG", timestamp))
             print("Summaries will be written to: {}\n".format(out_dir))
 
             self.global_step = tf.Variable(0, name='global_step',
@@ -65,7 +66,7 @@ class DrLBird(Driver):
                 terminal = False
                 ep_reward = 0
                 ep_ave_max_q = 0
-                # self.loadLevel(1)
+                # self.loadLevel(11)
                 self.loadRandLevel()
 
                 step = 0
@@ -80,14 +81,19 @@ class DrLBird(Driver):
                             continue
                     step += 1
                     state = self.preprocessDataForNN()
-                    if e < explT and np.random.rand() < epsilon:
+                    # start = time.time()
+                    if e < explT or np.random.rand() < epsilon:
                         action = np.array([[np.random.rand() * 50.0,
                                             np.random.rand() * 9000.0,
                                             np.random.rand() * 4000.0]])
                         print("Next action (e-greedy): {}\n".format(action))
+                        # time.sleep(1.0)
                     else:
                         action = self.policy.getActions(state)
                         print("Next action: {}\n".format(action))
+                        # time.sleep(1.0)
+                    # end = time.time()
+                    # print("time", end-start)
 
                     score, terminal, newState = \
                         self.actionResponse(action[0])
@@ -107,8 +113,8 @@ class DrLBird(Driver):
                             replay.sample_batch(miniBatchSize)
 
                         qValsNewState = self.policy.predict_target_nn(ns_batch)
-                        print("target qs: {}".format(qValsNewState))
-                        print("t_batch: {}".format(t_batch))
+                        # print("target qs: {}".format(qValsNewState))
+                        # print("t_batch: {}".format(t_batch))
                         y_batch = np.zeros((miniBatchSize, 1))
                         for i in range(miniBatchSize):
                             if t_batch[i]:
@@ -116,14 +122,17 @@ class DrLBird(Driver):
                             else:
                                 y_batch[i] = r_batch[i] + \
                                     gamma * qValsNewState[i]
-                        print("y_batch: {}".format(y_batch))
-                        print("rewards: {}".format(r_batch))
+                        # print("y_batch: {}".format(y_batch))
+                        # print("rewards: {}".format(r_batch))
                         ep_ave_max_q += np.amax(qValsNewState)
 
                         self.policy.update(s_batch, a_batch, y_batch)
                         self.policy.update_targets()
+                    else:
+                        time.sleep(2.0)
 
                     ep_reward += reward
+                    sys.stdout.flush()
 
                 print("episode reward: {}".format(ep_reward))
                 summary_str = sess.run(summary_ops, feed_dict={
@@ -138,8 +147,9 @@ class DrLBird(Driver):
                       format(ep_reward, e,
                              ep_ave_max_q / float(step)))
 
-                if (e+1) % 50 == 0:
+                if (e+1) % 10 == 0:
                     save_path = self.saver.save(sess,
                                                 out_dir + "/model.ckpt",
                                                 global_step=self.global_step)
                     print("Model saved in file: %s" % save_path)
+                sys.stdout.flush()
