@@ -8,8 +8,8 @@ class Critic:
     H1 = 16
     H2 = 32
     H3 = 256
-    learning_rate = 0.0001
-    mini_batch_size = 16
+    learning_rate = 0.00001
+    # mini_batch_size = 16
     tau = 0.001
     train_dir = 'data'
     state_dim_x = 105

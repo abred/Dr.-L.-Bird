@@ -29,7 +29,7 @@ import random
 from collections import deque
 
 import numpy as np
-
+import pickle
 
 class ReplayBuffer(object):
 
@@ -73,3 +73,11 @@ class ReplayBuffer(object):
     def clear(self):
         self.deque.clear()
         self.count = 0
+
+    def dump(self, fn):
+        with open(fn, 'w') as f:
+            pickle.dump(self.buffer, f)
+
+    def load(self, fn):
+        with open(fn, 'w') as f:
+            self.buffer = pickle.load(f)

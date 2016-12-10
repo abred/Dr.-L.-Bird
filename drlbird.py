@@ -34,6 +34,8 @@ class DrLBird(Driver):
                 timestamp = str(int(time.time()))
                 out_dir = os.path.abspath(os.path.join(
                     '/scratch/s7550245/Dr.-L.-Bird', "runsDDPG", timestamp))
+                if not os.path.exists(out_dir):
+                    os.makedirs(out_dir)
             print("Summaries will be written to: {}\n".format(out_dir))
 
             self.global_step = tf.Variable(0, name='global_step',
@@ -46,8 +48,8 @@ class DrLBird(Driver):
             sess.run(tf.initialize_all_variables())
 
             maxEpisodes = 100000
-            replayBufferSize = 1000
-            miniBatchSize = 16
+            replayBufferSize = 10000
+            miniBatchSize = 32
             gamma = 0.99
             replay = ReplayBuffer(replayBufferSize)
             epsilon = 0.2
@@ -57,6 +59,7 @@ class DrLBird(Driver):
             if resume:
                 explT = 0
                 self.saver.restore(sess, tf.train.latest_checkpoint(out_dir))
+                replay.load(os.path.join(out_dir, "replayBuffer.pickle"))
                 print("Model restored.")
 
             for e in range(maxEpisodes):
@@ -147,9 +150,10 @@ class DrLBird(Driver):
                       format(ep_reward, e,
                              ep_ave_max_q / float(step)))
 
-                if (e+1) % 10 == 0:
+                if (e+1) % 5 == 0:
                     save_path = self.saver.save(sess,
                                                 out_dir + "/model.ckpt",
                                                 global_step=self.global_step)
+                    replay.dump(os.path.join(out_dir, "replayBuffer.pickle"))
                     print("Model saved in file: %s" % save_path)
                 sys.stdout.flush()
