@@ -3,6 +3,7 @@ import math
 import time
 
 # from PIL import Image
+import png
 
 from birdWrapper import *
 
@@ -68,7 +69,7 @@ class Driver:
                                  ctypes.c_void_p(dataTemp.ctypes.data),
                                  ctypes.c_int(self.width),
                                  ctypes.c_int(self.height))
-        print("Current Score: {}".format(score))
+        # print("Current Score: {}".format(score))
         # dataTemp = dataTemp * 10000
         # im = Image.fromarray(dataTemp, mode='I')
         # print("Shape: {}".format(im.size))
@@ -188,7 +189,7 @@ class Driver:
     """
     Process data
     """
-    def fillObs(self, comp=False):
+    def fillObs(self, comp=False, store=None):
         w, h, rawInput = self.takeScreenshot()
         # print("w: {} h: {}".format(w, h))
         npInput = np.frombuffer(rawInput, np.dtype(np.uint8))
@@ -203,21 +204,24 @@ class Driver:
                               ctypes.c_void_p(data.ctypes.data),
                               ctypes.c_int(self.width),
                               ctypes.c_int(self.height))
-        # temp = np.copy(self.data)
-        # temp = temp * 100
-        # temp = np.reshape(temp, (h,w))
-        # im = Image.fromarray(temp, mode='I')
-        # print("Shape: {}".format(im.size))
-        # self.birdCnt += 1
-        # im.save("test" + str(self.testcnt) + ".png")
+        if store is not None:
+            temp = np.copy(data)
+            temp = temp * 10
+            temp = np.reshape(temp, (h,w))
+            print(temp.shape)
+            png.from_array(temp.astype(np.uint8), 'L').save("/scratch/s7550245/Dr.-L.-Bird/firstFrame_" + str(store) + ".png")
+            # im = Image.fromarray(temp, mode='I')
+            # print("Shape: {}".format(im.size))
+            # self.birdCnt += 1
+            # im.save("/scratch/s7550245/Dr.-L.-Bird/firstFrame_" + str(store) + ".png")
         # print("end fillobs")
 
         data.shape = (h, w)
-        if comp:
-            if np.array_equal(data, self.data):
-                print("-->> SAME <<--")
-            else:
-                print("-->> DIFFERENT <<--")
+        # if comp:
+        #     if np.array_equal(data, self.data):
+        #         print("-->> SAME <<--")
+        #     else:
+        #         print("-->> DIFFERENT <<--")
 
         self.data = data
         return self.data
@@ -241,21 +245,23 @@ class Driver:
                                          self.width, self.height)
         self.currCenterX = linPos % self.width
         self.currCenterY = math.floor(linPos/self.width)
-        print("Current slingshot position: {}, {}".format(self.currCenterX,
-                                                          self.currCenterY))
+        # print("Current slingshot position: {}, {}".format(self.currCenterX,
+        #                                                   self.currCenterY))
 
 
 
     def birdCount(self):
-        print("zoomin", self.zoomIn())
+        # print("zoomin", self.zoomIn())
+        self.zoomIn()
         self.fillObs(comp=True)
         # self.findSlingshot()
         # while self.currCenterY == 0 and self.currCenterX == 0:
         #     self.clickCenter()
         #     self.findSlingshot()
         self.birdCnt = lib.calcLives()
-        print("zoomout", self.zoomOut())
-        print("bird count: {}".format(self.birdCnt))
+        # print("zoomout", self.zoomOut())
+        self.zoomOut()
+        # print("bird count: {}".format(self.birdCnt))
         return self.birdCnt
 
     def actManually(self):
@@ -271,11 +277,12 @@ class Driver:
         t1 = int(input("time0: "))
         t2 = int(input("time1: "))
 
-        print("shoot", self.shoot(mid, fx, fy, dx, dy, t1, t2))
+        # print("shoot", self.shoot(mid, fx, fy, dx, dy, t1, t2))
+        self.shoot(mid, fx, fy, dx, dy, t1, t2)
 
     def act(self, action):
         # self.findSlingshot()
-        print("action: {}".format(action))
+        # print("action: {}".format(action))
         mid = 4
         fx = self.currCenterX
         fy = self.currCenterY
@@ -285,7 +292,8 @@ class Driver:
         t2 = action[2]
 
         
-        print("shoot", self.shoot(mid, fx, fy, dx, dy, t1, t2))
+        # print("shoot", self.shoot(mid, fx, fy, dx, dy, t1, t2))
+        self.shoot(mid, fx, fy, dx, dy, t1, t2)
 
     def actionResponse(self, action):
         score = self.getCurrScore()
@@ -303,7 +311,8 @@ class Driver:
         self.fillObs()
         newState = self.preprocessDataForNN()
 
-        gameState = self.getStatePrint()
+        # gameState = self.getStatePrint()
+        gameState = self.getState()
         terminal = False
         if gameState == 5:    # playing
             score = self.getCurrScore()

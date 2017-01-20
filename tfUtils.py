@@ -72,7 +72,7 @@ def conv2d(x, W, strh=1, strw=1):
 
 def max_pool_2x2(x):
     return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
-                          strides=[1, 2, 2, 1], padding='SAME')
+                          strides=[1, 2, 2, 1], padding='VALID')
 
 
 def convReluPoolLayer(inputs, inC, outC, fh=3, fw=3,
@@ -115,13 +115,7 @@ def convReluLayer(inputs, inC, outC, fh=3, fw=3,
     with tf.variable_scope(scopeName):
 
         weights, sw = weight_variable_conv([fh, fw, inC, outC], 'w')
-        # if "Critic/h3" in scopeName:
-            # weights = tf.Print(weights, [weights], message=tf.get_default_graph().unique_name(scopeName)+"weights: ")
-        # weights = tf.check_numerics(weights, tf.get_default_graph().unique_name(scopeName)+"weights: ")
         biases, sb = bias_variable([outC], 'b')
-        # biases = tf.Print(biases, [biases], message=tf.get_default_graph().unique_name(scopeName)+"biases: ", summarize=1000)
-        biases = tf.check_numerics(biases, tf.get_default_graph().unique_name(scopeName)+"biases: ")
-
         preactivate = conv2d(inputs, weights, strh, strw) + biases
         # preactivate = conv2d(inputs, weights)
         if isTargetNN:
@@ -143,7 +137,8 @@ def convReluLayer(inputs, inC, outC, fh=3, fw=3,
             return conv_n, sw + sb + [s1] + [s2] + [s3]
 
 
-def fullyConReluDrop(inputs, inC, outC, scopeName=None, isTargetNN=False,
+def fullyConReluDrop(inputs, inC, outC, keep_prob,
+                     scopeName=None, isTargetNN=False,
                      is_training=None):
     with tf.variable_scope(scopeName):
         weights, sw = weight_variable([inC, outC], 'w')
@@ -154,9 +149,9 @@ def fullyConReluDrop(inputs, inC, outC, scopeName=None, isTargetNN=False,
             fc = tf.nn.relu(preactivate)
             fc_n, _ = batch_norm(fc, is_training=is_training,
                                  scopeName=scopeName, isTargetNN=isTargetNN,
-                                 outC=outc)
+                                 outC=outC)
 
-            drop = tf.nn.dropout(fc_n, 0.5)
+            drop = tf.nn.dropout(fc_n, keep_prob)
             return drop, sw + sb
         else:
             s1 = tf.histogram_summary(
@@ -172,7 +167,7 @@ def fullyConReluDrop(inputs, inC, outC, scopeName=None, isTargetNN=False,
                                   scopeName=scopeName, isTargetNN=isTargetNN,
                                   outC=outC)
 
-            drop = tf.nn.dropout(fc_n, 0.5)
+            drop = tf.nn.dropout(fc_n, keep_prob)
             return drop, sw + sb + [s1] + [s2] + [s3]
 
 
@@ -180,11 +175,7 @@ def fullyConRelu(inputs, inC, outC, scopeName=None, isTargetNN=False,
                  is_training=None):
     with tf.variable_scope(scopeName):
         weights, sw = weight_variable([inC, outC], 'w')
-        # weights = tf.Print(weights, [weights], message=tf.get_default_graph().unique_name(scopeName)+"weights: ", summarize=1000)
-        weights = tf.check_numerics(weights, tf.get_default_graph().unique_name(scopeName)+"weights: ")
         biases, sb = bias_variable([outC], 'b')
-        # biases = tf.Print(biases, [biases], message=tf.get_default_graph().unique_name(scopeName)+"biases: ", summarize=1000)
-        biases = tf.check_numerics(biases, tf.get_default_graph().unique_name(scopeName)+"biases: ")
         preactivate = tf.matmul(inputs, weights) + biases
         # preactivate = tf.matmul(inputs, weights)
         if isTargetNN:
@@ -192,7 +183,7 @@ def fullyConRelu(inputs, inC, outC, scopeName=None, isTargetNN=False,
             fc_n, _ = batch_norm(fc, is_training=is_training,
                                  scopeName=scopeName, isTargetNN=isTargetNN,
                                  outC=outC)
-            return fc_n, sw + sb, weights, biases
+            return fc_n, sw + sb
         else:
             s1 = tf.histogram_summary(
                 tf.get_default_graph().unique_name(
@@ -205,7 +196,7 @@ def fullyConRelu(inputs, inC, outC, scopeName=None, isTargetNN=False,
             fc_n, s3 = batch_norm(fc, is_training=is_training,
                                   scopeName=scopeName, isTargetNN=isTargetNN,
                                   outC=outC)
-            return fc_n, sw + sb + [s1] + [s2] + [s3], weights, biases
+            return fc_n, sw + sb + [s1] + [s2] + [s3]
 
 
 def fullyCon(inputs, inC, outC, scopeName=None, isTargetNN=False,

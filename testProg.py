@@ -5,7 +5,7 @@ from driver import *
 from drlbird import *
 
 soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-soc.connect(("taurusi1048", 2004))
+soc.connect(("taurusi1061", 2004))
 d = DrLBird(soc)
 print("test1")
 d.configure(421337, True)
@@ -18,7 +18,7 @@ algo = 0
 if algo == 0:
     if len(sys.argv) > 1:
         print("resuming... ", sys.argv[1])
-        d.DDPG(resume=True, out_dir=sys.argv[1])
+        d.DDPG(resume=True, out_dir=sys.argv[1], evalu=False)
     else:
         print("new start...")
         d.DDPG()

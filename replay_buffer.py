@@ -79,5 +79,6 @@ class ReplayBuffer(object):
             pickle.dump(self.buffer, f)
 
     def load(self, fn):
-        with open(fn, 'w') as f:
+        with open(fn, 'r') as f:
             self.buffer = pickle.load(f)
+            self.count = len(self.buffer)

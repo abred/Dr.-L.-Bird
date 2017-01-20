@@ -38,7 +38,7 @@ class Encoder:
     def shot(mid, fx, fy, arg1, arg2, t1, t2):
         # print(mid,fx,fy,arg1,arg2,t1,t2)
         # return struct.pack('>biiiiii', mid, fx, fy, arg1, arg2, t1, t2)
-        print("shot: {} {}".format(fx, fy))
+        # print("shot: {} {}".format(fx, fy))
         return struct.pack('>biiiiii', np.int32(mid),
                            np.int32(fx), np.int32(fy),
                            np.int32(arg1), np.int32(arg2),

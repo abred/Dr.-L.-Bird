@@ -487,7 +487,7 @@ int getScoreEndGame(unsigned char const* screenshot, int width, int height,
   api->SetVariable("tessedit_char_whitelist", "0123456789");
 
   char* text = api->TesseractRect(output, 1, 100, 0, 0, 100, 32);
-  std::cout << "recognized text: " << text << std::endl;
+  // std::cout << "recognized text: " << text << std::endl;
 
   delete[] output;
 
@@ -650,7 +650,7 @@ std::list<Rectangle> findYellowBirdsMBRs() {
     obj = cropBoundingBox(obj, nWidth, nHeight);
     int* hist = histogram(obj, nWidth, nHeight);
     if (hist[288] > 0) {
-      printf("yellow bird at %d %d %d %d\n", obj.x, obj.y, obj.w, obj.h);
+      // printf("yellow bird at %d %d %d %d\n", obj.x, obj.y, obj.w, obj.h);
       objects.push_back(obj);
     }
     delete[] hist;
@@ -759,11 +759,11 @@ int calcBirdCount(){
   std::list<Rectangle> blackbirds = findBlackBirdsMBRs();
   std::list<Rectangle> wbirds = findWhiteBirdsMBRs();
 
-  printf("red birds: %d\n", rbirds.size());
-  printf("yellow birds: %d\n", ybirds.size());
-  printf("blue birds: %d\n", blbirds.size());
-  printf("black birds: %d\n", blackbirds.size());
-  printf("white birds: %d\n", wbirds.size());
+  // printf("red birds: %d\n", rbirds.size());
+  // printf("yellow birds: %d\n", ybirds.size());
+  // printf("blue birds: %d\n", blbirds.size());
+  // printf("black birds: %d\n", blackbirds.size());
+  // printf("white birds: %d\n", wbirds.size());
 
   return rbirds.size() + ybirds.size() +
     blbirds.size() + blackbirds.size() + wbirds.size();

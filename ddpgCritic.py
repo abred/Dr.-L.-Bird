@@ -5,16 +5,22 @@ import tfUtils as tfu
 
 class Critic:
     O = 1
-    H1 = 16
+    H1 = 32
     H2 = 32
-    H3 = 256
-    learning_rate = 0.00001
+    H3 = 64
+    H4 = 64
+    H5 = 128
+    H6 = 128
+    H7 = 128
+    H8 = 1024
+    H9 = 1024
+    learning_rate = 0.0001
     # mini_batch_size = 16
     tau = 0.001
     train_dir = 'data'
     state_dim_x = 105
     state_dim_y = 60
-    weight_decay = 0.001
+    weight_decay = 0.01
     actions_dim = 3
 
     def __init__(self, sess, out_dir, glStep):
@@ -24,17 +30,18 @@ class Critic:
 
         self.global_step = glStep
         with tf.variable_scope('Critic'):
+            self.keep_prob = tf.placeholder(tf.float32)
             self.isTraining = tf.placeholder(tf.bool)
 
             # Critic Network
             prevTrainVarCount = len(tf.trainable_variables())
-            self.input_pl, self.actions_pl, self.nn, self.middle = self.defineNN()
+            self.input_pl, self.actions_pl, self.nn = self.defineNN()
             self.nn_params = tf.trainable_variables()[prevTrainVarCount:]
 
             # Target Network
             with tf.variable_scope('target'):
                 prevTrainVarCount = len(tf.trainable_variables())
-                self.target_input_pl, self.target_actions_pl, self.target_nn, _ =\
+                self.target_input_pl, self.target_actions_pl, self.target_nn =\
                     self.defineNN(isTargetNN=True)
                 self.target_nn_params = \
                     tf.trainable_variables()[prevTrainVarCount:]
@@ -72,48 +79,72 @@ class Critic:
 
         h1, s = tfu.convReluLayer(x,
                                   1, self.H1,
-                                  fh=8, fw=8,
-                                  strh=4, strw=4,
                                   scopeName='h1',
                                   isTargetNN=isTargetNN,
                                   is_training=self.isTraining)
-        # h1 = tf.Print(h1, [h1], message=str(isTargetNN)+"critic h1: ", summarize=1000)
-        h1 = tf.check_numerics(h1, str(isTargetNN)+"critic h1: ")
 
         self.summaries += s
-        h2, s = tfu.convReluLayer(h1,
-                                  self.H1, self.H2,
-                                  fh=4, fw=4,
-                                  strh=2, strw=2,
-                                  scopeName='h2',
+        h2, s = tfu.convReluPoolLayer(h1,
+                                      self.H1, self.H2,
+                                      scopeName='h2',
+                                      isTargetNN=isTargetNN,
+                                      is_training=self.isTraining)
+
+        self.summaries += s
+        h3, s = tfu.convReluLayer(h2,
+                                  self.H2, self.H3,
+                                  scopeName='h3',
                                   isTargetNN=isTargetNN,
                                   is_training=self.isTraining)
-        # h2 = tf.Print(h2, [h2], message=str(isTargetNN)+"critic h2: ", summarize=1000)
-        h2 = tf.check_numerics(h2, str(isTargetNN)+"critic h2: ")
+
         self.summaries += s
-        h2_f = tf.reshape(h2, [-1, 14*8*self.H2], name='flatten')
-        h2_a = tf.concat(1, [
-            tf.reshape(h2, [-1, 14*8*self.H2], name='flatten'),
+        h4, s = tfu.convReluPoolLayer(h3,
+                                      self.H3, self.H4,
+                                      scopeName='h4',
+                                      isTargetNN=isTargetNN,
+                                      is_training=self.isTraining)
+
+        self.summaries += s
+        h5, s = tfu.convReluLayer(h4,
+                                  self.H4, self.H5,
+                                  scopeName='h5',
+                                  isTargetNN=isTargetNN,
+                                  is_training=self.isTraining)
+
+        self.summaries += s
+        h6, s = tfu.convReluLayer(h5,
+                                  self.H5, self.H6,
+                                  scopeName='h6',
+                                  isTargetNN=isTargetNN,
+                                  is_training=self.isTraining)
+
+        self.summaries += s
+        h7, s = tfu.convReluPoolLayer(h6,
+                                      self.H6, self.H7,
+                                      scopeName='h7',
+                                      isTargetNN=isTargetNN,
+                                      is_training=self.isTraining)
+
+        self.summaries += s
+        h7_a = tf.concat(1, [
+            tf.reshape(h7, [-1, 13*7*self.H7], name='flatten'),
             actions])
 
-        h3, s, w, b = tfu.fullyConRelu(h2_a,
-                                    8*14*self.H2+self.actions_dim, self.H3,
-                                    scopeName='h3', isTargetNN=isTargetNN,
-                                    is_training=self.isTraining)
-        if not isTargetNN:
-            self.w = w
-            self.h3 = h3
-            self.h2 = h2_a
-            self.h1 = h1
-            self.b = b
-        h3 = tf.check_numerics(h3, str(isTargetNN)+"critic h3: ")
+        h8, s = tfu.fullyConRelu(h7_a,
+                                 13*7*self.H7+self.actions_dim, self.H8,
+                                 scopeName='h8', isTargetNN=isTargetNN,
+                                 is_training=self.isTraining)
         self.summaries += s
-
-        o, s = tfu.fullyCon(h3, self.H3, self.O,
+        h9, s = tfu.fullyConRelu(h8,
+                                 self.H8, self.H9,
+                                 scopeName='h9', isTargetNN=isTargetNN,
+                                 is_training=self.isTraining)
+        self.summaries += s
+        o, s = tfu.fullyCon(h9, self.H9, self.O,
                             scopeName='out', isTargetNN=isTargetNN,
                             is_training=self.isTraining)
         self.summaries += s
-        return images, actions, o, h2_a
+        return images, actions, o
 
     def define_update_target_nn_op(self):
         with tf.variable_scope('update'):
@@ -154,18 +185,19 @@ class Critic:
 
     def define_training(self, loss):
         with tf.variable_scope('train'):
-            # loss = tf.Print(loss, [loss], "opt loss: ")
             optimizer = tf.train.AdamOptimizer(self.learning_rate, epsilon=0.1)
             # optimizer = tf.train.RMSPropOptimizer(self.learning_rate)
-
-            # grads_vars = optimizer.compute_gradients(loss,
-            #                                          var_list=self.nn_params)
-            # tmp = tf.Print(loss, [g for (g,v) in grads_vars],
-            #                "grads: ")
-            # train_op = optimizer.apply_gradients(grads_vars,
-            #                                      global_step=self.global_step)
             train_op = optimizer.minimize(loss,
                                           global_step=self.global_step)
+
+            # grad_vars = optimizer.compute_gradients(loss,
+            #                                         var_list=self.nn_params)
+            # gp_vars = []
+            # for (g,v) in grad_vars:
+            #     # gp = tf.Print(g, [g], 'grad: ', summarize=100000)
+            #     gp = tf.check_numerics(g, "grad numerics")
+            #     gp_vars.append((gp, v))
+            # train_op = optimizer.apply_gradients(gp_vars)
             return train_op
 
     def define_action_grad(self):
@@ -181,47 +213,53 @@ class Critic:
     def run_train(self, inputs, actions, targets):
         step = self.sess.run(self.global_step)
         if (step+1) % 10 == 0:
-            _, summaries = self.sess.run([self.train_op,
-                                          self.summary_op],
-                                         feed_dict={
+            out, _, summaries = self.sess.run([self.nn,
+                                               self.train_op,
+                                               self.summary_op],
+                                              feed_dict={
                 self.input_pl: inputs,
                 self.actions_pl: actions,
                 self.td_targets_pl: targets,
-                self.isTraining: True
+                self.isTraining: True,
+                self.keep_prob: 0.5
             })
             self.writer.add_summary(summaries, step)
             self.writer.flush()
         else:
-            self.sess.run([self.train_op],
-                          feed_dict={
-                self.input_pl: inputs,
-                self.actions_pl: actions,
-                self.td_targets_pl: targets,
-                self.isTraining: True
-            })
+            out, _ = self.sess.run([self.nn, self.train_op],
+                                   feed_dict={
+                                       self.input_pl: inputs,
+                                       self.actions_pl: actions,
+                                       self.td_targets_pl: targets,
+                                       self.isTraining: True,
+                                       self.keep_prob: 0.5
+                                   })
 
-        return step
+        return step, out
 
 
     def run_predict(self, inputs, action):
         return self.sess.run(self.nn, feed_dict={
             self.input_pl: inputs,
             self.actions_pl: action,
-            self.isTraining: False
+            self.isTraining: False,
+            self.keep_prob: 1.0
         })
 
     def run_predict_target(self, inputs, action):
         return self.sess.run(self.target_nn, feed_dict={
             self.target_input_pl: inputs,
             self.target_actions_pl: action,
-            self.isTraining: False
+            self.isTraining: False,
+            self.keep_prob: 1.0
         })
 
     def run_get_action_gradients(self, inputs, actions):
-        return self.sess.run([self.middle,self.nn,self.action_grads], feed_dict={
+        return self.sess.run(self.action_grads, feed_dict={
             self.input_pl: inputs,
             self.actions_pl: actions,
-            self.isTraining: False
+            self.isTraining: False,
+            self.keep_prob: 1.0
         })
 
     def run_get_gradients(self, inputs, actions, targets):
@@ -229,7 +267,8 @@ class Critic:
             self.input_pl: inputs,
             self.actions_pl: actions,
             self.td_targets_pl: targets,
-            self.isTraining: False
+            self.isTraining: False,
+            self.keep_prob: 1.0
         }))
 
     def run_get_loss(self, inputs, actions, targets):
@@ -237,7 +276,8 @@ class Critic:
             self.input_pl: inputs,
             self.actions_pl: actions,
             self.td_targets_pl: targets,
-            self.isTraining: False
+            self.isTraining: False,
+            self.keep_prob: 1.0
         })
     def run_update_target_nn(self):
         self.sess.run(self.target_nn_update_op)

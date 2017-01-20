@@ -68,7 +68,7 @@ class Decoder:
         # return (dim[0], dim[1], temp)
         # data = recv_timeout(self.soc)
         data = recvall(self.soc, dim[0] * dim[1] * 3)
-        print(dim[0], dim[1], len(data))
+        # print(dim[0], dim[1], len(data))
         return (dim[0], dim[1], data)
         # return (dim[0], dim[1], self.soc.recv(dim[0]*dim[1]*3, socket.MSG_WAITALL))
 
