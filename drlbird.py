@@ -32,11 +32,11 @@ class DrLBird(Driver):
             #     tf.scalar_summary("Qmax ValueEval", episode_ave_max_q)
             # else:
             episode_reward = tf.Variable(0., name="episodeReward")
-            tf.scalar_summary("Reward", episode_reward)
+            tf.summary.scalar("Reward", episode_reward)
             episode_ave_max_q = tf.Variable(0., name='epsideAvgMaxQ')
-            tf.scalar_summary("Qmax Value", episode_ave_max_q)
+            tf.summary.scalar("Qmax_Value", episode_ave_max_q)
             summary_vars = [episode_reward, episode_ave_max_q]
-            summary_ops = tf.merge_all_summaries()
+            summary_ops = tf.summary.merge_all()
 
             if not resume:
                 timestamp = str(int(time.time()))
@@ -55,19 +55,22 @@ class DrLBird(Driver):
                                            trainable=False)
 
             self.policy = DDPGPolicy(sess, out_dir, self.global_step)
-            writerTrain = tf.train.SummaryWriter(out_dir+"/train", sess.graph)
-            writerTest = tf.train.SummaryWriter(out_dir+"/test", sess.graph)
+            writerTrain = tf.summary.FileWriter(out_dir+"/train", sess.graph)
+            writerTest = tf.summary.FileWriter(out_dir+"/test", sess.graph)
 
             self.cno = tf.add_check_numerics_ops()
+            episode_step = tf.Variable(0, name='episode_step',
+                                       trainable=False, dtype=tf.int32)
+            increment_ep_step_op = tf.assign(episode_step, episode_step+1)
             sess.run(tf.initialize_all_variables())
 
             maxEpisodes = 100000
             replayBufferSize = 10000
-            miniBatchSize = 8
+            miniBatchSize = 16
             gamma = 0.99
             replay = ReplayBuffer(replayBufferSize)
             epsilon = 0.2
-            explT = 10
+            explT = 25
             cnt = 1
 
             self.saver = tf.train.Saver()
@@ -80,12 +83,13 @@ class DrLBird(Driver):
 
             if evalu:
                 episode_reward = tf.Variable(0., name="episodeRewardEval")
-                tf.scalar_summary("RewardEval", episode_reward)
+                tf.summary.scalar("RewardEval", episode_reward)
                 episode_ave_max_q = tf.Variable(0., name='epsideAvgMaxQEval')
-                tf.scalar_summary("Qmax ValueEval", episode_ave_max_q)
+                tf.summary.scalar("Qmax_ValueEval", episode_ave_max_q)
 
-            fs = sess.run(self.global_step)
+            fs = sess.run(self.episode_step)
             for e in range(fs, maxEpisodes):
+                sess.run(increment_global_step_op)
                 # noise = OUNoise(3)
                 # noise = OUNoise(3, sigma=[1.5, 180.0, 90.0])
                 epsilon = 1.0 / (math.pow(e+1, 1.0/3.0))
@@ -100,20 +104,20 @@ class DrLBird(Driver):
                 while not terminal:
                     self.birdCnt = self.birdCount()
                     # time.sleep(.0)
-                    if step == 0:
-                        self.fillObs(store=cnt)
-                        cnt += 1
-                    else:
-                        self.fillObs()
                     self.findSlingshot()
                     if self.currCenterX == 0:
                         if self.getState() != 5:
                             break
                         else:
                             continue
-                    step += 1
+                    # if step == 0:
+                    #     self.fillObs(store=cnt)
+                    #     cnt += 1
+                    # else:
+                    self.fillObs()
                     state = self.preprocessDataForNN()
                     # start = time.time()
+                    step += 1
                     if ((not evalu) and
                         (e < explT or np.random.rand() < epsilon)):
                         action = np.array([[np.random.rand(),

@@ -20,8 +20,9 @@ class Actor:
     # mini_batch_size = 16
     tau = 0.001
     train_dir = 'data'
-    state_dim_x = 105
-    state_dim_y = 60
+    state_dim_x = 210
+    state_dim_y = 120
+    col_channels = 3
     actions_dim = 3
 
     def __init__(self, sess, out_dir):
@@ -54,22 +55,25 @@ class Actor:
             # Optimization Op
             self.train_op = self.define_training()
             summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope="Actor")
-            self.summary_op = tf.merge_summary(summaries)
-            self.writer = tf.train.SummaryWriter(out_dir, sess.graph)
+            self.summary_op = tf.summary.merge(summaries)
+            self.writer = tf.summary.FileWriter(out_dir, sess.graph)
 
     def defineNN(self, isTargetNN=False):
         images = tf.placeholder(
             tf.float32,
-            shape=[None, self.state_dim_x*self.state_dim_y],
+            shape=[None,
+                   self.state_dim_y,
+                   self.state_dim_x,
+                   self.col_channels],
             name='input')
-        x = tf.reshape(images, [-1,
-                                self.state_dim_y,
-                                self.state_dim_x,
-                                1],
-                       name='deflatten')
+        # x = tf.reshape(images, [-1,
+        #                         self.state_dim_y,
+        #                         self.state_dim_x,
+        #                         self.col_channels],
+        #                name='deflatten')
 
-        h1, s = tfu.convReluLayer(x,
-                                  1, self.H1,
+        h1, s = tfu.convReluLayer(images,
+                                  self.col_channels, self.H1,
                                   scopeName='h1',
                                   isTargetNN=isTargetNN,
                                   is_training=self.isTraining)
@@ -103,7 +107,14 @@ class Actor:
                                   is_training=self.isTraining)
 
         self.summaries += s
-        h6, s = tfu.convReluLayer(h5,
+        h5b, s = tfu.convReluPoolLayer(h5,
+                                      self.H5, self.H6,
+                                      scopeName='h5b',
+                                      isTargetNN=isTargetNN,
+                                      is_training=self.isTraining)
+
+        self.summaries += s
+        h6, s = tfu.convReluLayer(h5b,
                                   self.H5, self.H6,
                                   scopeName='h6',
                                   isTargetNN=isTargetNN,
@@ -139,22 +150,22 @@ class Actor:
         t_o = 4000.0 * tf.sigmoid(t)
         if not isTargetNN:
             self.summaries += [
-                tf.histogram_summary(tf.get_default_graph().unique_name(
+                tf.summary.histogram(tf.get_default_graph().unique_name(
                     'out' + '/radius_action',
                     mark_as_used=False), r_o),
-                tf.histogram_summary(tf.get_default_graph().unique_name(
+                tf.summary.histogram(tf.get_default_graph().unique_name(
                     'out' + '/theta_action',
                     mark_as_used=False), th_o),
-                tf.histogram_summary(tf.get_default_graph().unique_name(
+                tf.summary.histogram(tf.get_default_graph().unique_name(
                     'out' + '/time_delay_action',
                     mark_as_used=False), t_o),
-                tf.histogram_summary(tf.get_default_graph().unique_name(
+                tf.summary.histogram(tf.get_default_graph().unique_name(
                     'out' + '/radius_action_before_sig',
                     mark_as_used=False), r),
-                tf.histogram_summary(tf.get_default_graph().unique_name(
+                tf.summary.histogram(tf.get_default_graph().unique_name(
                     'out' + '/theta_action_before_sig',
                     mark_as_used=False), th),
-                tf.histogram_summary(tf.get_default_graph().unique_name(
+                tf.summary.histogram(tf.get_default_graph().unique_name(
                     'out' + '/time_delay_action_before_sig',
                     mark_as_used=False), t)
             ]

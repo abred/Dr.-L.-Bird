@@ -44,23 +44,23 @@ def bias_variable(shape, name, minV=None, maxV=None):
 def variable_summaries(var, name):
     """Attach a lot of summaries to a Tensor."""
     mean = tf.reduce_mean(var)
-    s1 = tf.scalar_summary(
+    s1 = tf.summary.scalar(
         tf.get_default_graph().unique_name(name + '/mean',
                                            mark_as_used=False), mean)
     with tf.name_scope('stddev'):
         stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
-    s2 = tf.scalar_summary(
+    s2 = tf.summary.scalar(
         tf.get_default_graph().unique_name(name + '/stddev',
                                            mark_as_used=False), stddev)
-    s3 = tf.scalar_summary(
+    s3 = tf.summary.scalar(
         tf.get_default_graph().unique_name(name + '/max',
                                            mark_as_used=False),
         tf.reduce_max(var))
-    s4 = tf.scalar_summary(
+    s4 = tf.summary.scalar(
         tf.get_default_graph().unique_name(name + '/min',
                                            mark_as_used=False),
         tf.reduce_min(var))
-    s5 = tf.histogram_summary(
+    s5 = tf.summary.histogram(
         tf.get_default_graph().unique_name(name + '/histo',
                                            mark_as_used=False), var)
     return [s1, s2, s3, s4, s5]
@@ -93,12 +93,12 @@ def convReluPoolLayer(inputs, inC, outC, fh=3, fw=3,
             return pool_n, sw + sb
         else:
             # preactivate = conv2d(inputs, weights)
-            s1 = tf.histogram_summary(
+            s1 = tf.summary.histogram(
                 tf.get_default_graph().unique_name(
                     scopeName + '/pre_activation',
                     mark_as_used=False), preactivate)
             conv = tf.nn.relu(preactivate)
-            s2 = tf.histogram_summary(
+            s2 = tf.summary.histogram(
                 tf.get_default_graph().unique_name(scopeName + '/activations',
                                                    mark_as_used=False), conv)
             pool = max_pool_2x2(conv)
@@ -124,12 +124,12 @@ def convReluLayer(inputs, inC, outC, fh=3, fw=3,
                                    scopeName=scopeName, isTargetNN=isTargetNN)
             return conv_n, sw + sb
         else:
-            s1 = tf.histogram_summary(
+            s1 = tf.summary.histogram(
                 tf.get_default_graph().unique_name(
                     scopeName + '/pre_activation',
                     mark_as_used=False), preactivate)
             conv = tf.nn.relu(preactivate)
-            s2 = tf.histogram_summary(
+            s2 = tf.summary.histogram(
                 tf.get_default_graph().unique_name(scopeName + '/activations',
                                                    mark_as_used=False), conv)
             conv_n, s3 = batch_norm(conv, is_training=is_training,
@@ -154,12 +154,12 @@ def fullyConReluDrop(inputs, inC, outC, keep_prob,
             drop = tf.nn.dropout(fc_n, keep_prob)
             return drop, sw + sb
         else:
-            s1 = tf.histogram_summary(
+            s1 = tf.summary.histogram(
                 tf.get_default_graph().unique_name(
                     scopeName + '/pre_activation',
                     mark_as_used=False), preactivate)
             fc = tf.nn.relu(preactivate)
-            s2 = tf.histogram_summary(
+            s2 = tf.summary.histogram(
                 tf.get_default_graph().unique_name(scopeName + '/activations',
                                                    mark_as_used=False), fc)
             # keepprob = tf.placeholder(tf.float32)
@@ -185,12 +185,12 @@ def fullyConRelu(inputs, inC, outC, scopeName=None, isTargetNN=False,
                                  outC=outC)
             return fc_n, sw + sb
         else:
-            s1 = tf.histogram_summary(
+            s1 = tf.summary.histogram(
                 tf.get_default_graph().unique_name(
                     scopeName + '/pre_activation',
                     mark_as_used=False), preactivate)
             fc = tf.nn.relu(preactivate)
-            s2 = tf.histogram_summary(
+            s2 = tf.summary.histogram(
                 tf.get_default_graph().unique_name(scopeName + '/activations',
                                                    mark_as_used=False), fc)
             fc_n, s3 = batch_norm(fc, is_training=is_training,
@@ -208,7 +208,7 @@ def fullyCon(inputs, inC, outC, scopeName=None, isTargetNN=False,
         if isTargetNN:
             return fc, sw + sb
         else:
-            s1 = tf.histogram_summary(
+            s1 = tf.summary.histogram(
             tf.get_default_graph().unique_name(scopeName + '/outut',
                                                mark_as_used=False), fc)
             return fc, sw + sb + [s1]
@@ -243,10 +243,9 @@ def batch_norm(inputs,
         bn = tf.reshape(bn, [-1, outC], name="bnreshapebugo")
 
     if not isTargetNN:
-        s = tf.histogram_summary(
+        s = tf.summary.histogram(
             tf.get_default_graph().unique_name(scopeName + '/normalized',
-                                               mark_as_used=False), bn,
-            name="batchnormtest")
+                                               mark_as_used=False), bn)
         return bn, s
     else:
         return bn, []

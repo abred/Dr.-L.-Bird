@@ -18,9 +18,10 @@ class Critic:
     # mini_batch_size = 16
     tau = 0.001
     train_dir = 'data'
-    state_dim_x = 105
-    state_dim_y = 60
-    weight_decay = 0.01
+    state_dim_x = 210
+    state_dim_y = 120
+    col_channels = 3
+    weight_decay = 0.001
     actions_dim = 3
 
     def __init__(self, sess, out_dir, glStep):
@@ -59,26 +60,29 @@ class Critic:
             self.train_op = self.define_training(self.loss_op)
 
             summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope="Critic")
-            self.summary_op = tf.merge_summary(summaries)
-            self.writer = tf.train.SummaryWriter(out_dir, sess.graph)
+            self.summary_op = tf.summary.merge(summaries)
+            self.writer = tf.summary.FileWriter(out_dir, sess.graph)
 
     def defineNN(self, isTargetNN=False):
         images = tf.placeholder(
             tf.float32,
-            shape=[None, self.state_dim_x*self.state_dim_y],
+            shape=[None,
+                   self.state_dim_y,
+                   self.state_dim_x,
+                   self.col_channels],
             name='input')
         actions = tf.placeholder(tf.float32,
                                  shape=[None, self.actions_dim],
                                  name='ActorActions')
 
-        x = tf.reshape(images, [-1,
-                                self.state_dim_y,
-                                self.state_dim_x,
-                                1],
-                       name='deflatten')
+        # x = tf.reshape(images, [-1,
+        #                         self.state_dim_y,
+        #                         self.state_dim_x,
+        #                         self.col_channels],
+        #                name='deflatten')
 
-        h1, s = tfu.convReluLayer(x,
-                                  1, self.H1,
+        h1, s = tfu.convReluLayer(images,
+                                  self.col_channels, self.H1,
                                   scopeName='h1',
                                   isTargetNN=isTargetNN,
                                   is_training=self.isTraining)
@@ -112,7 +116,14 @@ class Critic:
                                   is_training=self.isTraining)
 
         self.summaries += s
-        h6, s = tfu.convReluLayer(h5,
+        h5b, s = tfu.convReluPoolLayer(h5,
+                                      self.H5, self.H6,
+                                      scopeName='h5b',
+                                      isTargetNN=isTargetNN,
+                                      is_training=self.isTraining)
+
+        self.summaries += s
+        h6, s = tfu.convReluLayer(h5b,
                                   self.H5, self.H6,
                                   scopeName='h6',
                                   isTargetNN=isTargetNN,
@@ -157,35 +168,36 @@ class Critic:
                  for i in range(len(self.target_nn_params))]
 
     def define_loss(self):
-        with tf.variable_scope('loss'):
+        with tf.variable_scope('loss2'):
             self.td_targets_pl = tf.placeholder(tf.float32, [None, 1],
                                              name='tdTargets')
 
             lossL2 = tfu.mean_squared_diff(self.td_targets_pl, self.nn)
-            # lossL2 = tf.Print(lossL2, [lossL2], message="lossl2: ")
-            self.summaries += [tf.scalar_summary('mean_squared_diff_loss',
-                                                 lossL2)]
-
+            with tf.name_scope(''):
+                self.summaries += [
+                    tf.summary.scalar('mean_squared_diff_loss',
+                                      lossL2)]
             regs = []
             for v in self.nn_params:
                 if "w" in v.name:
                     regs.append(tf.nn.l2_loss(v))
             lossReg = tf.add_n(regs)
-            # lossReg = tf.Print(lossReg, [lossReg], message="lossreg: ")
-            self.summaries += [
-                tf.scalar_summary('mean_squared_diff_loss_reg',
-                                  lossReg)]
-            loss = lossL2 + lossReg * self.weight_decay
-            self.summaries += [
-                tf.scalar_summary('mean_squared_diff_loss_with_reg',
-                                  loss)]
+            with tf.name_scope(''):
+                self.summaries += [
+                    tf.summary.scalar('mean_squared_diff_loss_reg',
+                                      lossReg)]
 
-        # return loss
+            loss = lossL2 + lossReg * self.weight_decay
+            with tf.name_scope(''):
+                self.summaries += [
+                    tf.summary.scalar('mean_squared_diff_loss_with_reg',
+                                      loss)]
+
         return loss
 
     def define_training(self, loss):
         with tf.variable_scope('train'):
-            optimizer = tf.train.AdamOptimizer(self.learning_rate, epsilon=0.1)
+            optimizer = tf.train.AdamOptimizer(self.learning_rate) #, epsilon=0.1)
             # optimizer = tf.train.RMSPropOptimizer(self.learning_rate)
             train_op = optimizer.minimize(loss,
                                           global_step=self.global_step)

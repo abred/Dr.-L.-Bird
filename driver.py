@@ -19,6 +19,7 @@ class Driver:
         self.dec = Decoder(soc)
         self.birdCnt = 0
         self.data = np.zeros((480 * 840), dtype=np.int32)
+        self.cnt = 0
 
     """
     Configuration
@@ -181,7 +182,6 @@ class Driver:
         lvl = np.random.randint(1,22)
         print("loading level {}".format(lvl))
         self.loadLevel(lvl)
-        # self.loadLevel(1)
         self.zoomOut()
         self.getStatePrint()
 
@@ -189,60 +189,56 @@ class Driver:
     """
     Process data
     """
-    def fillObs(self, comp=False, store=None):
+    def fillObs(self, store=None):
         w, h, rawInput = self.takeScreenshot()
-        # print("w: {} h: {}".format(w, h))
         npInput = np.frombuffer(rawInput, np.dtype(np.uint8))
-        # print("Shape: {}".format(npInput.shape))
-        npInput = np.reshape(npInput, (h, w, 3))
-
-        data = np.zeros((h * w), dtype=np.int32)
-
+        self.data = np.reshape(npInput, (h, w, 3))
         self.height = h
         self.width = w
-        lib.processScreenShot(ctypes.c_void_p(npInput.ctypes.data),
-                              ctypes.c_void_p(data.ctypes.data),
-                              ctypes.c_int(self.width),
-                              ctypes.c_int(self.height))
+
         if store is not None:
-            temp = np.copy(data)
-            temp = temp * 10
-            temp = np.reshape(temp, (h,w))
-            print(temp.shape)
-            png.from_array(temp.astype(np.uint8), 'L').save("/scratch/s7550245/Dr.-L.-Bird/firstFrame_" + str(store) + ".png")
-            # im = Image.fromarray(temp, mode='I')
-            # print("Shape: {}".format(im.size))
-            # self.birdCnt += 1
-            # im.save("/scratch/s7550245/Dr.-L.-Bird/firstFrame_" + str(store) + ".png")
-        # print("end fillobs")
+            temp = np.copy(self.data)
+            # temp = temp * 10
+            temp = np.reshape(temp, (h,w*3))
+            # print(temp)
+            # print(temp.shape)
+            png.from_array(temp.astype(np.uint8), 'RGB').save(
+                "/scratch/s7550245/Dr.-L.-Bird/firstFrame_" +
+                str(store) + ".png")
 
-        data.shape = (h, w)
-        # if comp:
-        #     if np.array_equal(data, self.data):
-        #         print("-->> SAME <<--")
-        #     else:
-        #         print("-->> DIFFERENT <<--")
 
-        self.data = data
         return self.data
 
-    def preprocessDataForNN(self):
-        # self.dataNN = np.zeros((self.height * self.width), dtype=np.float)
-        # self.dataNN = np.zeros((1, 448 * 832), dtype=np.float)
+    def preprocessDataForNN(self, store=None):
+        self.dataNN = self.data.astype(np.float32) / 256.0
+        # self.dataNN = scipy.misc.imresize(self.dataNN, 0.25)
+        self.dataNN = scipy.ndimage.zoom(self.dataNN, (0.25, 0.25, 1),
+                                         order=1)
+        self.dataNN.shape = (1, self.height / 4, self.width / 4, 3)
 
-        # lib.preprocessDataForNN(ctypes.c_void_p(self.data.ctypes.data),
-        #                         ctypes.c_void_p(self.dataNN.ctypes.data),
-        #                         ctypes.c_int(self.width),
-        #                         ctypes.c_int(self.height))
-        # return self.dataNN
-        self.dataNN = self.data.astype(np.float32) / 512.0
-        self.dataNN = scipy.ndimage.zoom(self.dataNN, 0.125, order=1)
-        self.dataNN.shape = (1, self.height * self.width / 8 / 8)
+        if store is not None:
+            tmp = np.copy(self.dataNN)
+            tmp *= 256.0
+            tmp.shape =  (self.height / 4, self.width / 4 * 3)
+            png.from_array(tmp.astype(np.uint8), 'RGB').save(
+                "/scratch/s7550245/Dr.-L.-Bird/processedFrame_" +
+                str(self.cnt) + ".png")
+            self.cnt += 1
+
         return self.dataNN
 
     def findSlingshot(self):
-        linPos = lib.findSlingshotCenter(ctypes.c_void_p(self.data.ctypes.data),
-                                         self.width, self.height)
+        self.fillObs()
+        data = np.zeros((self.height * self.width), dtype=np.int32)
+
+        lib.processScreenShot(ctypes.c_void_p(self.data.ctypes.data),
+                              ctypes.c_void_p(data.ctypes.data),
+                              ctypes.c_int(self.width),
+                              ctypes.c_int(self.height))
+
+        linPos = \
+            lib.findSlingshotCenter(ctypes.c_void_p(data.ctypes.data),
+                                    self.width, self.height)
         self.currCenterX = linPos % self.width
         self.currCenterY = math.floor(linPos/self.width)
         # print("Current slingshot position: {}, {}".format(self.currCenterX,
@@ -251,17 +247,17 @@ class Driver:
 
 
     def birdCount(self):
-        # print("zoomin", self.zoomIn())
         self.zoomIn()
-        self.fillObs(comp=True)
-        # self.findSlingshot()
-        # while self.currCenterY == 0 and self.currCenterX == 0:
-        #     self.clickCenter()
-        #     self.findSlingshot()
+        self.fillObs()
+        data = np.zeros((self.height * self.width), dtype=np.int32)
+
+        lib.processScreenShot(ctypes.c_void_p(self.data.ctypes.data),
+                              ctypes.c_void_p(data.ctypes.data),
+                              ctypes.c_int(self.width),
+                              ctypes.c_int(self.height))
+
         self.birdCnt = lib.calcLives()
-        # print("zoomout", self.zoomOut())
         self.zoomOut()
-        # print("bird count: {}".format(self.birdCnt))
         return self.birdCnt
 
     def actManually(self):
@@ -277,12 +273,9 @@ class Driver:
         t1 = int(input("time0: "))
         t2 = int(input("time1: "))
 
-        # print("shoot", self.shoot(mid, fx, fy, dx, dy, t1, t2))
         self.shoot(mid, fx, fy, dx, dy, t1, t2)
 
     def act(self, action):
-        # self.findSlingshot()
-        # print("action: {}".format(action))
         mid = 4
         fx = self.currCenterX
         fy = self.currCenterY
@@ -291,8 +284,6 @@ class Driver:
         t1 = 0
         t2 = action[2]
 
-        
-        # print("shoot", self.shoot(mid, fx, fy, dx, dy, t1, t2))
         self.shoot(mid, fx, fy, dx, dy, t1, t2)
 
     def actionResponse(self, action):
