@@ -1,11 +1,40 @@
+import getopt
 import time
 import socket
 import sys
 from driver import *
 from drlbird import *
 
+resume = False
+useVGG = False
+top = None
+try:
+    print(sys.argv)
+    opts, args = getopt.getopt(sys.argv[1:],"r:vt:h:")
+    print(opts, args)
+except getopt.GetoptError:
+    print('args parse error')
+    print('args: ', argv)
+    print('using default values')
+for opt, arg in opts:
+    print(opt, arg)
+    if opt == '-r':
+        resume = True
+        out_dir = arg
+        print("resuming...")
+    elif opt == '-v':
+        useVGG = True
+    elif opt == '-t':
+        top = int(arg)
+    elif opt == '-h':
+        host = arg
+
+print("useVGG", useVGG)
+print("host", host)
+print("top", top)
+
 soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-soc.connect(("taurusi1156", 2004))
+soc.connect((host, 2004))
 d = DrLBird(soc)
 print("test1")
 d.configure(421337, True)
@@ -16,12 +45,18 @@ print("test3")
 
 algo = 0
 if algo == 0:
-    if len(sys.argv) > 1:
-        print("resuming... ", sys.argv[1])
-        d.DDPG(resume=True, out_dir=sys.argv[1], evalu=False)
+    if resume:
+        print("resuming... ", out_dir)
+        if "VGG" in out_dir:
+            useVGG = True
+            tmp = out_dir.split("top")[1]
+            print(tmp[:2])
+            top = int(tmp[:2])
+        d.DDPG(resume=True, out_dir=out_dir, evalu=False,
+               useVGG=useVGG, top=top)
     else:
         print("new start...")
-        d.DDPG()
+        d.DDPG(useVGG=useVGG, top=top)
 elif algo == 3:
     d.DSPG()
 elif algo == 1:

@@ -209,17 +209,26 @@ class Driver:
 
         return self.data
 
-    def preprocessDataForNN(self, store=None):
+    def preprocessDataForNN(self, store=None, vgg=False):
         self.dataNN = self.data.astype(np.float32) / 256.0
         # self.dataNN = scipy.misc.imresize(self.dataNN, 0.25)
-        self.dataNN = scipy.ndimage.zoom(self.dataNN, (0.25, 0.25, 1),
+        if vgg:
+            self.dataNN = scipy.ndimage.zoom(self.dataNN,
+                                         (224.0/480.0, 224.0/840.0, 1),
                                          order=1)
-        self.dataNN.shape = (1, self.height / 4, self.width / 4, 3)
-
+        else:
+            self.dataNN = scipy.ndimage.zoom(self.dataNN, (0.25, 0.25, 1),
+                                             order=1)
+        self.dataNN.shape = (1,
+                             self.dataNN.shape[0],
+                             self.dataNN.shape[1],
+                             self.dataNN.shape[2])
+        print(self.dataNN.shape)
         if store is not None:
             tmp = np.copy(self.dataNN)
             tmp *= 256.0
-            tmp.shape =  (self.height / 4, self.width / 4 * 3)
+            tmp.shape = (self.dataNN.shape[1],
+                         self.dataNN.shape[2] * self.dataNN.shape[3])
             png.from_array(tmp.astype(np.uint8), 'RGB').save(
                 "/scratch/s7550245/Dr.-L.-Bird/processedFrame_" +
                 str(self.cnt) + ".png")
@@ -286,7 +295,7 @@ class Driver:
 
         self.shoot(mid, fx, fy, dx, dy, t1, t2)
 
-    def actionResponse(self, action):
+    def actionResponse(self, action, vgg=False):
         score = self.getCurrScore()
         self.act(action)
         time.sleep(3)
@@ -300,7 +309,7 @@ class Driver:
                     break
 
         self.fillObs()
-        newState = self.preprocessDataForNN()
+        newState = self.preprocessDataForNN(vgg=vgg)
 
         # gameState = self.getStatePrint()
         gameState = self.getState()

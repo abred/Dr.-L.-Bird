@@ -21,9 +21,8 @@ from replay_buffer import ReplayBuffer
 class DrLBird(Driver):
     # policy = GaussianPolicy()
 
-    def DDPG(self, resume=False, out_dir=None, evalu=False):
-
-
+    def DDPG(self, resume=False, out_dir=None, evalu=False,
+             useVGG=False, top=None):
         with tf.Session() as sess:
             # if evalu:
             #     episode_reward = tf.Variable(0., name="episodeRewardEval")
@@ -54,14 +53,16 @@ class DrLBird(Driver):
             self.global_step = tf.Variable(0, name='global_step',
                                            trainable=False)
 
-            self.policy = DDPGPolicy(sess, out_dir, self.global_step)
+            self.policy = DDPGPolicy(sess, out_dir,
+                                     self.global_step, useVGG=useVGG, top=top)
             writerTrain = tf.summary.FileWriter(out_dir+"/train", sess.graph)
             writerTest = tf.summary.FileWriter(out_dir+"/test", sess.graph)
 
             self.cno = tf.add_check_numerics_ops()
-            episode_step = tf.Variable(0, name='episode_step',
-                                       trainable=False, dtype=tf.int32)
-            increment_ep_step_op = tf.assign(episode_step, episode_step+1)
+            self.episode_step = tf.Variable(0, name='episode_step',
+                                            trainable=False, dtype=tf.int32)
+            self.increment_ep_step_op = tf.assign(self.episode_step,
+                                                  self.episode_step+1)
             sess.run(tf.initialize_all_variables())
 
             maxEpisodes = 100000
@@ -89,7 +90,7 @@ class DrLBird(Driver):
 
             fs = sess.run(self.episode_step)
             for e in range(fs, maxEpisodes):
-                sess.run(increment_global_step_op)
+                sess.run(self.increment_ep_step_op)
                 # noise = OUNoise(3)
                 # noise = OUNoise(3, sigma=[1.5, 180.0, 90.0])
                 epsilon = 1.0 / (math.pow(e+1, 1.0/3.0))
@@ -115,7 +116,7 @@ class DrLBird(Driver):
                     #     cnt += 1
                     # else:
                     self.fillObs()
-                    state = self.preprocessDataForNN()
+                    state = self.preprocessDataForNN(vgg=useVGG)
                     # start = time.time()
                     step += 1
                     if ((not evalu) and
@@ -135,7 +136,7 @@ class DrLBird(Driver):
                     # print("time", end-start)
 
                     score, terminal, newState = \
-                        self.actionResponse(a_scaled[0])
+                        self.actionResponse(a_scaled[0], vgg=useVGG)
 
                     print("Current score: {}".format(score))
                     if score < oldScore:

@@ -8,9 +8,10 @@ from ddpgCritic import Critic
 import tensorflow as tf
 
 class DDPGPolicy:
-    def __init__(self, sess, out_dir, glStep):
-        self.actor = Actor(sess, out_dir)
-        self.critic = Critic(sess, out_dir, glStep)
+    def __init__(self, sess, out_dir, glStep, useVGG=False, top=None):
+        self.actor = Actor(sess, out_dir, useVGG=useVGG, top=top)
+        self.critic = Critic(sess, out_dir, glStep, useVGG=useVGG, top=top)
+
         self.cnt = 0
         self.out_dir = out_dir
 
