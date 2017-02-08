@@ -15,7 +15,7 @@ class Critic:
     H7 = 128
     H8 = 1024
     H9 = 1024
-    learning_rate = 0.0001
+    learning_rate = 0.00005
     # mini_batch_size = 16
     tau = 0.001
     train_dir = 'data'
@@ -119,8 +119,8 @@ class Critic:
             self.action_grads = self.define_action_grad()
             self.grads = self.define_grads()
 
-            summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope="Critic")
-            self.summary_op = tf.summary.merge(summaries)
+            # summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope="Critic")
+            self.summary_op = tf.summary.merge(self.summaries)
             self.writer = tf.summary.FileWriter(out_dir, sess.graph)
 
     def defineNN(self, isTargetNN=False):
@@ -508,17 +508,26 @@ class Critic:
         with tf.variable_scope('update'):
             tau = tf.constant(self.tau, name='tau')
             invtau = tf.constant(1.0-self.tau, name='invtau')
-            tmp = []
-            for i in range(len(self.target_nn_params)):
-                for j in range(len(self.nn_params)):
-                    p1 = self.nn_params[j]
-                    p2 = self.target_nn_params[i]
-                    if p2.name.split("/")[-1] in p1.name:
-                        tmp.append(self.target_nn_params[i].assign(
-                            tf.mul(self.nn_params[j], tau) +
-                            tf.mul(self.target_nn_params[i], invtau)))
-                        break
-            return tmp
+            if self.useVGG:
+                tmp = []
+                for i in range(len(self.target_nn_params)):
+                    for j in range(len(self.nn_params)):
+                        p1 = self.nn_params[j]
+                        p2 = self.target_nn_params[i]
+                        if p2.name.split("/")[-1] in p1.name:
+                            print(p1.name, p2.name)
+                            tmp.append(self.target_nn_params[i].assign(
+                                tf.mul(self.nn_params[j], tau) +
+                                tf.mul(self.target_nn_params[i], invtau)))
+                            break
+                return tmp
+            else:
+                return \
+                    [self.target_nn_params[i].assign(
+                        tf.mul(self.nn_params[i], tau) +
+                        tf.mul(self.target_nn_params[i], invtau))
+                     for i in range(len(self.target_nn_params))]
+
 
     def define_loss(self):
         with tf.variable_scope('loss2'):
@@ -615,11 +624,12 @@ class Critic:
 
     def run_train(self, inputs, actions, targets):
         step = self.sess.run(self.global_step)
-        if (step+1) % 10 == 0:
-            out, _, summaries = self.sess.run([self.nn,
-                                               self.train_op,
-                                               self.summary_op],
-                                              feed_dict={
+        if (step+1) % 1 == 0:
+            out, loss, _, summaries = self.sess.run([self.nn,
+                                                     self.loss_op,
+                                                     self.train_op,
+                                                     self.summary_op],
+                                                    feed_dict={
                 self.input_pl: inputs,
                 self.actions_pl: actions,
                 self.td_targets_pl: targets,
@@ -629,15 +639,16 @@ class Critic:
             self.writer.add_summary(summaries, step)
             self.writer.flush()
         else:
-            out, _ = self.sess.run([self.nn, self.train_op],
-                                   feed_dict={
-                                       self.input_pl: inputs,
-                                       self.actions_pl: actions,
-                                       self.td_targets_pl: targets,
-                                       self.isTraining: True,
-                                       self.keep_prob: 0.5
-                                   })
-
+            out, loss, _ = self.sess.run(
+                [self.nn, self.loss_op, self.train_op],
+                feed_dict={
+                    self.input_pl: inputs,
+                    self.actions_pl: actions,
+                    self.td_targets_pl: targets,
+                    self.isTraining: True,
+                    self.keep_prob: 0.5
+                })
+        print("loss: {}".format(loss))
         return step, out
 
 

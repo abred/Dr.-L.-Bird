@@ -24,6 +24,7 @@ class DDPGPolicy:
         print("step: {}".format(step))
         ac = self.actor.run_predict(states)
         a_grad = self.critic.run_get_action_gradients(states, ac)
+        print(a_grad)
         self.actor.run_train(states, a_grad[0], step)
         return out
 

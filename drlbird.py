@@ -16,13 +16,14 @@ from ddpgPolicy import DDPGPolicy
 
 from ouNoise import OUNoise
 from replay_buffer import ReplayBuffer
+from sumTree import SumTree
 
 
 class DrLBird(Driver):
     # policy = GaussianPolicy()
 
     def DDPG(self, resume=False, out_dir=None, evalu=False,
-             useVGG=False, top=None):
+             useVGG=False, top=None, prioritized=False):
         with tf.Session() as sess:
             # if evalu:
             #     episode_reward = tf.Variable(0., name="episodeRewardEval")
@@ -69,7 +70,12 @@ class DrLBird(Driver):
             replayBufferSize = 10000
             miniBatchSize = 16
             gamma = 0.99
-            replay = ReplayBuffer(replayBufferSize)
+            if prioritized:
+                replay = SumTree(replayBufferSize)
+                print("using SumTree")
+            else:
+                replay = ReplayBuffer(replayBufferSize)
+                print("using linear Buffer")
             epsilon = 0.2
             explT = 25
             cnt = 1
@@ -152,11 +158,19 @@ class DrLBird(Driver):
                     if evalu:
                         continue
 
-                    replay.add(state, action, reward, terminal, newState)
+                    if prioritized:
+                        replay.add(999.9, (state, action, reward, terminal, newState))
+                    else:
+                        replay.add(state, action, reward, terminal, newState)
 
                     if replay.size() > miniBatchSize:
-                        s_batch, a_batch, r_batch, t_batch, ns_batch =\
-                            replay.sample_batch(miniBatchSize)
+                        if prioritized:
+                            ids, s_batch, a_batch, r_batch, t_batch, ns_batch =\
+                                replay.sample_batch(miniBatchSize)
+                            print(ids)
+                        else:
+                            s_batch, a_batch, r_batch, t_batch, ns_batch =\
+                                replay.sample_batch(miniBatchSize)
 
                         qValsNewState = self.policy.predict_target_nn(ns_batch)
                         y_batch = np.zeros((miniBatchSize, 1))
@@ -166,6 +180,10 @@ class DrLBird(Driver):
                             else:
                                 y_batch[i] = r_batch[i] + \
                                     gamma * qValsNewState[i]
+
+                        if prioritized:
+                            for i in range(miniBatchSize):
+                                replay.update(ids[i], abs(y_batch[i]))
 
                         qs = self.policy.update(s_batch, a_batch, y_batch)
                         ep_ave_max_q += np.amax(qs)

@@ -20,7 +20,7 @@ class Actor:
     H7 = 128
     H8 = 1024
     H9 = 1024
-    learning_rate = 0.0001
+    learning_rate = 0.00005
     # mini_batch_size = 16
     tau = 0.001
     train_dir = 'data'
@@ -41,11 +41,10 @@ class Actor:
         print("useDrop actor", self.useDrop)
         print("top actor", self.top)
 
-
-        varTmp = tf.get_variable("tmp", shape=[1,1])
-
         prevTrainVarCount = len(tf.trainable_variables())
         if useVGG:
+            varTmp = tf.get_variable("tmp", shape=[1,1])
+
             self.vggsaver = tf.train.import_meta_graph(
                 '/home/s7550245/convNet/vgg-model.meta',
                 import_scope="Actor/VGG",
@@ -116,8 +115,8 @@ class Actor:
                         self.define_update_target_nn_op()
                 self.train_op = self.define_training()
 
-            summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope="Actor")
-            self.summary_op = tf.summary.merge(summaries)
+            # summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope="Actor")
+            self.summary_op = tf.summary.merge(self.summaries)
             self.writer = tf.summary.FileWriter(out_dir, sess.graph)
 
     def defineNN(self, isTargetNN=False):
@@ -543,17 +542,26 @@ class Actor:
         with tf.variable_scope('update'):
             tau = tf.constant(self.tau, name='tau')
             invtau = tf.constant(1.0-self.tau, name='invtau')
-            tmp = []
-            for i in range(len(self.target_nn_params)):
-                for j in range(len(self.nn_params)):
-                    p1 = self.nn_params[j]
-                    p2 = self.target_nn_params[i]
-                    if p2.name.split("/")[-1] in p1.name:
-                        tmp.append(self.target_nn_params[i].assign(
-                            tf.mul(self.nn_params[j], tau) +
-                            tf.mul(self.target_nn_params[i], invtau)))
-                        break
-            return tmp
+            if self.useVGG:
+                tmp = []
+                for i in range(len(self.target_nn_params)):
+                    for j in range(len(self.nn_params)):
+                        p1 = self.nn_params[j]
+                        p2 = self.target_nn_params[i]
+                        if p2.name.split("/")[-1] in p1.name:
+                            print(p1.name, p2.name)
+                            tmp.append(self.target_nn_params[i].assign(
+                                tf.mul(self.nn_params[j], tau) +
+                                tf.mul(self.target_nn_params[i], invtau)))
+                            break
+                return tmp
+            else:
+                return \
+                    [self.target_nn_params[i].assign(
+                        tf.mul(self.nn_params[i], tau) +
+                        tf.mul(self.target_nn_params[i], invtau))
+                     for i in range(len(self.target_nn_params))]
+
 
     def defineTrainingVGG(self, conv=False):
         with tf.variable_scope('train'):
@@ -622,7 +630,7 @@ class Actor:
                 apply_gradients(zip(self.actor_gradients, self.nn_params))
 
     def run_train(self, inputs, a_grad, step):
-        if (step+1) % 10 == 0:
+        if (step+1) % 1 == 0:
             _, summaries = self.sess.run([self.train_op,
                                           self.summary_op],
                                          feed_dict={

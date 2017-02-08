@@ -8,9 +8,10 @@ from drlbird import *
 resume = False
 useVGG = False
 top = None
+prioritized = False
 try:
     print(sys.argv)
-    opts, args = getopt.getopt(sys.argv[1:],"r:vt:h:")
+    opts, args = getopt.getopt(sys.argv[1:],"r:vt:h:p")
     print(opts, args)
 except getopt.GetoptError:
     print('args parse error')
@@ -28,10 +29,13 @@ for opt, arg in opts:
         top = int(arg)
     elif opt == '-h':
         host = arg
+    elif opt == '-p':
+        prioritized = True
 
 print("useVGG", useVGG)
 print("host", host)
 print("top", top)
+print("prioritized", prioritized)
 
 soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 soc.connect((host, 2004))
@@ -53,10 +57,10 @@ if algo == 0:
             print(tmp[:2])
             top = int(tmp[:2])
         d.DDPG(resume=True, out_dir=out_dir, evalu=False,
-               useVGG=useVGG, top=top)
+               useVGG=useVGG, top=top, prioritized=prioritized)
     else:
         print("new start...")
-        d.DDPG(useVGG=useVGG, top=top)
+        d.DDPG(useVGG=useVGG, top=top, prioritized=prioritized)
 elif algo == 3:
     d.DSPG()
 elif algo == 1:
