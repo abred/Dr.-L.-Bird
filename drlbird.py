@@ -22,15 +22,12 @@ from sumTree import SumTree
 class DrLBird(Driver):
     # policy = GaussianPolicy()
 
-    def DDPG(self, resume=False, out_dir=None, evalu=False,
-             useVGG=False, top=None, prioritized=False):
+    def DDPG(self, params):
+        evalu = params['evaluation']
+        useVGG = params['useVGG']
+        prioritized = params['prioritized']
+
         with tf.Session() as sess:
-            # if evalu:
-            #     episode_reward = tf.Variable(0., name="episodeRewardEval")
-            #     tf.scalar_summary("RewardEval", episode_reward)
-            #     episode_ave_max_q = tf.Variable(0., name='epsideAvgMaxQEval')
-            #     tf.scalar_summary("Qmax ValueEval", episode_ave_max_q)
-            # else:
             episode_reward = tf.Variable(0., name="episodeReward")
             tf.summary.scalar("Reward", episode_reward)
             episode_ave_max_q = tf.Variable(0., name='epsideAvgMaxQ')
@@ -38,12 +35,17 @@ class DrLBird(Driver):
             summary_vars = [episode_reward, episode_ave_max_q]
             summary_ops = tf.summary.merge_all()
 
-            if not resume:
+            if not params['resume']:
                 timestamp = str(int(time.time()))
                 out_dir = os.path.abspath(os.path.join(
                     '/scratch/s7550245/Dr.-L.-Bird', "runsDDPG", timestamp))
                 if not os.path.exists(out_dir):
                     os.makedirs(out_dir)
+                print("new start...")
+            else:
+                out_dir = params['resume']
+                print("resuming... ", out_dir)
+
             shutil.copy2('drlbird.py', os.path.join(out_dir, 'drlbird.py'))
             shutil.copy2('tfUtils.py', os.path.join(out_dir, 'tfUtils.py'))
             shutil.copy2('ddpgActor.py', os.path.join(out_dir, 'ddpgActor.py'))
@@ -55,15 +57,15 @@ class DrLBird(Driver):
                                            trainable=False)
 
             self.policy = DDPGPolicy(sess, out_dir,
-                                     self.global_step, useVGG=useVGG, top=top)
+                                     self.global_step,
+                                     params)
             writerTrain = tf.summary.FileWriter(out_dir+"/train", sess.graph)
             writerTest = tf.summary.FileWriter(out_dir+"/test", sess.graph)
 
             self.cno = tf.add_check_numerics_ops()
-            self.episode_step = tf.Variable(0, name='episode_step',
-                                            trainable=False, dtype=tf.int32)
-            self.increment_ep_step_op = tf.assign(self.episode_step,
-                                                  self.episode_step+1)
+            episode_step = tf.Variable(0, name='episode_step',
+                                       trainable=False, dtype=tf.int32)
+            increment_ep_step_op = tf.assign(episode_step, episode_step+1)
             sess.run(tf.initialize_all_variables())
 
             maxEpisodes = 100000
@@ -77,11 +79,11 @@ class DrLBird(Driver):
                 replay = ReplayBuffer(replayBufferSize)
                 print("using linear Buffer")
             epsilon = 0.2
-            explT = 25
+            explT = 50
             cnt = 1
 
             self.saver = tf.train.Saver()
-            if resume:
+            if params['resume']:
                 explT = 0
                 self.saver.restore(sess, tf.train.latest_checkpoint(out_dir))
                 if not evalu:
@@ -94,9 +96,9 @@ class DrLBird(Driver):
                 episode_ave_max_q = tf.Variable(0., name='epsideAvgMaxQEval')
                 tf.summary.scalar("Qmax_ValueEval", episode_ave_max_q)
 
-            fs = sess.run(self.episode_step)
+            fs = sess.run(episode_step)
             for e in range(fs, maxEpisodes):
-                sess.run(self.increment_ep_step_op)
+                sess.run(increment_ep_step_op)
                 # noise = OUNoise(3)
                 # noise = OUNoise(3, sigma=[1.5, 180.0, 90.0])
                 epsilon = 1.0 / (math.pow(e+1, 1.0/3.0))
@@ -159,17 +161,19 @@ class DrLBird(Driver):
                         continue
 
                     if prioritized:
-                        replay.add(999.9, (state, action, reward, terminal, newState))
+                        replay.add(999.9,
+                                   (state, action, reward, terminal, newState))
                     else:
                         replay.add(state, action, reward, terminal, newState)
 
                     if replay.size() > miniBatchSize:
                         if prioritized:
-                            ids, s_batch, a_batch, r_batch, t_batch, ns_batch =\
+                            ids, \
+                            s_batch, a_batch, r_batch, t_batch, ns_batch = \
                                 replay.sample_batch(miniBatchSize)
                             print(ids)
                         else:
-                            s_batch, a_batch, r_batch, t_batch, ns_batch =\
+                            s_batch, a_batch, r_batch, t_batch, ns_batch = \
                                 replay.sample_batch(miniBatchSize)
 
                         qValsNewState = self.policy.predict_target_nn(ns_batch)

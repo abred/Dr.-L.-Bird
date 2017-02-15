@@ -8,9 +8,9 @@ from ddpgCritic import Critic
 import tensorflow as tf
 
 class DDPGPolicy:
-    def __init__(self, sess, out_dir, glStep, useVGG=False, top=None):
-        self.actor = Actor(sess, out_dir, useVGG=useVGG, top=top)
-        self.critic = Critic(sess, out_dir, glStep, useVGG=useVGG, top=top)
+    def __init__(self, sess, out_dir, glStep, params):
+        self.actor = Actor(sess, out_dir, params)
+        self.critic = Critic(sess, out_dir, glStep, params)
 
         self.cnt = 0
         self.out_dir = out_dir
@@ -20,11 +20,10 @@ class DDPGPolicy:
         return a
 
     def update(self, states, actions, targets):
-        step, out = self.critic.run_train(states, actions, targets)
-        print("step: {}".format(step))
+        step, out, loss = self.critic.run_train(states, actions, targets)
+        print("step: {}, loss: {}".format(step, loss))
         ac = self.actor.run_predict(states)
         a_grad = self.critic.run_get_action_gradients(states, ac)
-        print(a_grad)
         self.actor.run_train(states, a_grad[0], step)
         return out
 

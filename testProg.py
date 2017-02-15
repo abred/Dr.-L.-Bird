@@ -1,3 +1,5 @@
+import parseNNArgs
+
 import getopt
 import time
 import socket
@@ -5,40 +7,60 @@ import sys
 from driver import *
 from drlbird import *
 
-resume = False
-useVGG = False
-top = None
-prioritized = False
-try:
-    print(sys.argv)
-    opts, args = getopt.getopt(sys.argv[1:],"r:vt:h:p")
-    print(opts, args)
-except getopt.GetoptError:
-    print('args parse error')
-    print('args: ', argv)
-    print('using default values')
-for opt, arg in opts:
-    print(opt, arg)
-    if opt == '-r':
-        resume = True
-        out_dir = arg
-        print("resuming...")
-    elif opt == '-v':
-        useVGG = True
-    elif opt == '-t':
-        top = int(arg)
-    elif opt == '-h':
-        host = arg
-    elif opt == '-p':
-        prioritized = True
 
-print("useVGG", useVGG)
-print("host", host)
-print("top", top)
-print("prioritized", prioritized)
+
+params = parseNNArgs.parse(sys.argv[1:])
+
+timestamp = str(int(time.time()))
+out_dir = os.path.abspath(os.path.join(
+    '/scratch/s7550245/convNet',
+    "runs", timestamp))
+
+print("Number of epochs: ", params['numEpochs'])
+out_dir += "_" + str(params['numEpochs'])
+
+print("miniBatchSize: ", params['miniBatchSize'])
+out_dir += "_" + str(params['miniBatchSize'])
+
+print("usevgg", params['useVGG'])
+if params['useVGG']:
+    out_dir += "_" + "VGG" + str(params['top'])
+    if params['stopGrad']:
+        out_dir += "-stopGrad" + str(params['stopGrad'])
+else:
+    out_dir += "_" + "noVGG"
+
+print("dropout", params['dropout'])
+if params['dropout']:
+    out_dir += "_" + "dropout" + str(params['dropout'])
+else:
+    out_dir += "_" + "noDropout"
+
+print("batchnorm", params['batchnorm'])
+if params['batchnorm']:
+    out_dir += "_" + "batchnorm"
+else:
+    out_dir += "_" + "noBatchnorm"
+
+if params['prioritized']:
+    out_dir += "_" + "prioritized"
+else:
+    out_dir += "_" + "notPrioritized"
+
+print("weight decay", params['weight-decay'])
+out_dir += "_wd" + str(params['weight-decay'])
+
+print("learning rate", params['learning-rate'])
+out_dir += "_lr" + str(params['learning-rate'])
+
+print("momentum", params['momentum'])
+out_dir += "_mom" + str(params['momentum'])
+
+print("optimizer", params['optimizer'])
+out_dir += "_opt" + params['optimizer']
 
 soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-soc.connect((host, 2004))
+soc.connect((params['host'], 2004))
 d = DrLBird(soc)
 print("test1")
 d.configure(421337, True)
@@ -49,18 +71,7 @@ print("test3")
 
 algo = 0
 if algo == 0:
-    if resume:
-        print("resuming... ", out_dir)
-        if "VGG" in out_dir:
-            useVGG = True
-            tmp = out_dir.split("top")[1]
-            print(tmp[:2])
-            top = int(tmp[:2])
-        d.DDPG(resume=True, out_dir=out_dir, evalu=False,
-               useVGG=useVGG, top=top, prioritized=prioritized)
-    else:
-        print("new start...")
-        d.DDPG(useVGG=useVGG, top=top, prioritized=prioritized)
+    d.DDPG(params)
 elif algo == 3:
     d.DSPG()
 elif algo == 1:

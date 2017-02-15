@@ -219,16 +219,18 @@ class Driver:
         else:
             self.dataNN = scipy.ndimage.zoom(self.dataNN, (0.25, 0.25, 1),
                                              order=1)
-        self.dataNN.shape = (1,
-                             self.dataNN.shape[0],
-                             self.dataNN.shape[1],
-                             self.dataNN.shape[2])
+        self.dataNN.shape = (1, self.height / 4, self.width / 4, 3)
+        # self.dataNN.shape = (1,
+        #                      self.dataNN.shape[0],
+        #                      self.dataNN.shape[1],
+        #                      self.dataNN.shape[2])
         print(self.dataNN.shape)
         if store is not None:
             tmp = np.copy(self.dataNN)
             tmp *= 256.0
-            tmp.shape = (self.dataNN.shape[1],
-                         self.dataNN.shape[2] * self.dataNN.shape[3])
+            tmp.shape =  (self.height / 4, self.width / 4 * 3)
+            # tmp.shape = (self.dataNN.shape[1],
+            #              self.dataNN.shape[2] * self.dataNN.shape[3])
             png.from_array(tmp.astype(np.uint8), 'RGB').save(
                 "/scratch/s7550245/Dr.-L.-Bird/processedFrame_" +
                 str(self.cnt) + ".png")
