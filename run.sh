@@ -4,7 +4,7 @@
 #SBATCH -A p_argumentation
 #SBATCH -n 1
 #SBATCH -N 1
-#SBATCH --time 2-00:00:00
+#SBATCH --time 7-00:00:00
 #SBATCH --mem 20G
 #SBATCH --mail-type=END,FAIL,TIME_LIMIT_90
 #SBATCH --mail-user=s7550245@msx.tu-dresden.de
@@ -26,12 +26,12 @@ PYTHONPATH=/home/s7550245/pyutil:/sw/taurus/libraries/tesseract/3.04/lib64/:/hom
 		  --batchnorm \
 		  --weight-decayCritic 0.0005 \
 		  --weight-decayActor 0.0005 \
-		  --learning-rateCritic 0.0005 \
-		  --momentumCritic 0.5 \
+		  --learning-rateCritic 0.006 \
+		  --momentumCritic 0.9 \
 		  --optimizerCritic momentum \
 		  --stopGradCritic 7 \
-		  --learning-rateActor 0.0001 \
-		  --momentumActor 0.5 \
+		  --learning-rateActor 0.002 \
+		  --momentumActor 0.9 \
 		  --optimizerActor momentum \
 		  --stopGradActor 7 \
 		  --prioritized \
@@ -39,5 +39,6 @@ PYTHONPATH=/home/s7550245/pyutil:/sw/taurus/libraries/tesseract/3.04/lib64/:/hom
 		  --gamma 1.0 \
 		  --miniBatchSize 16 \
 		  --async \
-		  --loadLevel 11
+		  --importanceSampling \
+		  # --loadLevel 11
 		  # -r /scratch/s7550245/Dr.-L.-Bird/runsDDPG/1487256665b

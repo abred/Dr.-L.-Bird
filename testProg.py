@@ -72,6 +72,15 @@ out_dir += "_optA" + params['optimizerActor']
 print("optimizerCritic", params['optimizerCritic'])
 out_dir += "_optC" + params['optimizerCritic']
 
+if params['prioritized']:
+    out_dir += "_" + "prio"
+
+if params['async']:
+    out_dir += "_" + "async"
+
+if params['importanceSampling']:
+    out_dir += "_" + "impSmpl"
+
 print("level", params['loadLevel'])
 if params['loadLevel']:
     out_dir += "_lvl" + str(params['loadLevel'])

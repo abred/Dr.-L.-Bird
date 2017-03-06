@@ -5,7 +5,7 @@
 #SBATCH -n 2
 #SBATCH -N 1
 #SBATCH -c 1
-#SBATCH --time 2-00:00:00
+#SBATCH --time 7-00:00:00
 #SBATCH --mem 4G
 #SBATCH --mail-type=END,FAIL,TIME_LIMIT_90
 #SBATCH --mail-user=s7550245@msx.tu-dresden.de

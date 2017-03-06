@@ -207,7 +207,6 @@ class DrLBird(Driver):
                     if not self.params['async']:
                         self.learn()
 
-
                     state = newState
                     sys.stdout.flush()
 
@@ -258,12 +257,26 @@ class DrLBird(Driver):
 
             qValsNewState = self.policy.predict_target_nn(ns_batch)
             y_batch = np.zeros((self.miniBatchSize, 1))
-            for i in range(self.miniBatchSize):
-                if t_batch[i]:
-                    y_batch[i] = r_batch[i]
-                else:
-                    y_batch[i] = r_batch[i] + \
-                        self.gamma * qValsNewState[i]
+            if self.params['importanceSampling']:
+                w_batch = np.zeros((self.miniBatchSize, 1))
+                for i in range(self.miniBatchSize):
+                    w_batch[i] = math.pow(self.replay.size() * ps_batch[i],
+                                          -self.replay.beta)
+                wMax = np.max(w_batch)
+                for i in range(self.miniBatchSize):
+                    if t_batch[i]:
+                        y_batch[i] = w_batch[i] / wMax * r_batch[i]
+                    else:
+                        y_batch[i] = w_batch[i] / wMax * \
+                            (r_batch[i] + self.gamma * qValsNewState[i])
+                self.replay.beta += min(1.0, 0.0000625 * self.replay.beta)
+            else:
+                for i in range(self.miniBatchSize):
+                    if t_batch[i]:
+                        y_batch[i] = r_batch[i]
+                    else:
+                        y_batch[i] = r_batch[i] + \
+                            self.gamma * qValsNewState[i]
 
             if self.params['prioritized']:
                 for i in range(self.miniBatchSize):
