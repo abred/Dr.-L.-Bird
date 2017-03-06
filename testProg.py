@@ -6,15 +6,16 @@ import socket
 import sys
 from driver import *
 from drlbird import *
-
+import os
 
 
 params = parseNNArgs.parse(sys.argv[1:])
 
 timestamp = str(int(time.time()))
+jobid = os.environ['SLURM_JOBID']
 out_dir = os.path.abspath(os.path.join(
-    '/scratch/s7550245/convNet',
-    "runs", timestamp))
+    '/scratch/s7550245/Dr.-L.-Bird', "runsDDPG",
+    params['version'], jobid + "_" + timestamp))
 
 print("Number of epochs: ", params['numEpochs'])
 out_dir += "_" + str(params['numEpochs'])
@@ -47,17 +48,35 @@ if params['prioritized']:
 else:
     out_dir += "_" + "notPrioritized"
 
-print("weight decay", params['weight-decay'])
-out_dir += "_wd" + str(params['weight-decay'])
+print("weight decayActor", params['weight-decayActor'])
+out_dir += "_wdA" + str(params['weight-decayActor'])
 
-print("learning rate", params['learning-rate'])
-out_dir += "_lr" + str(params['learning-rate'])
+print("weight decayCritic", params['weight-decayCritic'])
+out_dir += "_wdC" + str(params['weight-decayCritic'])
 
-print("momentum", params['momentum'])
-out_dir += "_mom" + str(params['momentum'])
+print("learning rateActor", params['learning-rateActor'])
+out_dir += "_lrA" + str(params['learning-rateActor'])
 
-print("optimizer", params['optimizer'])
-out_dir += "_opt" + params['optimizer']
+print("learning rateCritic", params['learning-rateCritic'])
+out_dir += "_lrC" + str(params['learning-rateCritic'])
+
+print("momentumActor", params['momentumActor'])
+out_dir += "_momA" + str(params['momentumActor'])
+
+print("momentumCritic", params['momentumCritic'])
+out_dir += "_momC" + str(params['momentumCritic'])
+
+print("optimizerActor", params['optimizerActor'])
+out_dir += "_optA" + params['optimizerActor']
+
+print("optimizerCritic", params['optimizerCritic'])
+out_dir += "_optC" + params['optimizerCritic']
+
+print("level", params['loadLevel'])
+if params['loadLevel']:
+    out_dir += "_lvl" + str(params['loadLevel'])
+else:
+    out_dir += "_lvlRand"
 
 soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 soc.connect((params['host'], 2004))
@@ -71,7 +90,7 @@ print("test3")
 
 algo = 0
 if algo == 0:
-    d.DDPG(params)
+    d.DDPG(params, out_dir)
 elif algo == 3:
     d.DSPG()
 elif algo == 1:

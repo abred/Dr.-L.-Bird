@@ -9,6 +9,7 @@ import defineVGG
 
 from tensorflow.python.framework import ops
 import tensorflow as tf
+import tensorflow.contrib.slim as slim
 
 import tfUtils as tfu
 
@@ -24,6 +25,13 @@ class Critic:
     H7 = 128
     H8 = 1024
     H9 = 1024
+    Hconv1 = 32
+    Hconv2 = 64
+    Hconv3 = 128
+    Hconv4 = 256
+    HFC = [512, 512]
+    HFCVGG = [2048, 2048]
+
     tau = 0.001
     train_dir = 'data'
     state_dim_x = 210
@@ -45,6 +53,12 @@ class Critic:
         self.momentum = params['momentumCritic']
         self.opti = params['optimizerCritic']
         self.stopGrad = params['stopGradCritic']
+        self.bnDecay = params['batchnorm-decay']
+        if params['batchnorm']:
+            # self.batchnorm = slim.batch_norm
+            self.batchnorm = tfu.batch_normBUG
+        else:
+            self.batchnorm = None
 
         print("dropout critic", self.dropout)
         print("vgg critic", self.useVGG)
@@ -123,14 +137,14 @@ class Critic:
     def setNN(self):
         prevTrainVarCount = len(tf.trainable_variables())
 
-        self.input_pl, self.actions_pl, self.nn = self.defineNN()
+        self.input_pl, self.actions_pl, self.nn = self.defineNN2()
         self.nn_params = tf.trainable_variables()[prevTrainVarCount:]
 
         # Target Network
         with tf.variable_scope('target'):
             prevTrainVarCount = len(tf.trainable_variables())
             self.target_input_pl, self.target_actions_pl, self.target_nn =\
-                self.defineNN(isTargetNN=True)
+                self.defineNN2(isTargetNN=True)
             self.target_nn_params = \
                 tf.trainable_variables()[prevTrainVarCount:]
             with tf.variable_scope('init'):
@@ -139,6 +153,84 @@ class Critic:
                         self.target_nn_params[i],
                         self.nn_params[i].initialized_value())
             self.target_nn_update_op = self.define_update_target_nn_op()
+
+    def defineNN2(self, isTargetNN=False):
+        with tf.variable_scope('inf'):
+            images = tf.placeholder(
+                tf.float32,
+                shape=[None,
+                       self.state_dim_y,
+                       self.state_dim_x,
+                       self.col_channels],
+                name='input')
+            actions = tf.placeholder(tf.float32,
+                                     shape=[None, self.actions_dim],
+                                     name='ActorActions')
+
+            net = images
+            with slim.arg_scope(
+                [slim.fully_connected, slim.conv2d],
+                activation_fn=tf.nn.relu,
+                weights_initializer=tf.contrib.layers.xavier_initializer(
+                    uniform=True),
+                weights_regularizer=slim.l2_regularizer(self.weightDecay),
+                biases_initializer=tf.contrib.layers.xavier_initializer(
+                    uniform=True)):
+                with slim.arg_scope([slim.conv2d], stride=1, padding='SAME'):
+                    net = slim.repeat(net, 3, slim.conv2d, self.Hconv1,
+                                      [3, 3], scope='conv1')
+                    print(net)
+                    net = slim.max_pool2d(net, [2, 2], scope='pool1')
+                    print(net)
+                    net = slim.repeat(net, 3, slim.conv2d, self.Hconv2,
+                                      [3, 3], scope='conv2')
+                    print(net)
+                    net = slim.max_pool2d(net, [2, 2], scope='pool2')
+                    print(net)
+
+                    net = slim.repeat(net, 3, slim.conv2d, self.Hconv3,
+                                      [3, 3], scope='conv3')
+                    print(net)
+                    net = slim.max_pool2d(net, [2, 2], scope='pool3')
+                    print(net)
+                    net = slim.repeat(net, 3, slim.conv2d, self.Hconv4,
+                                      [3, 3], scope='conv4')
+                    print(net)
+                    net = slim.max_pool2d(net, [2, 2], scope='pool4')
+                    print(net)
+
+                remSzY = int(self.state_dim_y / 2**4)
+                remSzX = int(self.state_dim_x / 2**4)
+                net = tf.concat(
+                    1, [tf.reshape(net, [-1, remSzY*remSzX*self.Hconv4],
+                                   name='flatten'),
+                        actions])
+
+                with slim.arg_scope([slim.fully_connected],
+                                    normalizer_fn=self.batchnorm,
+                                    normalizer_params={
+                                        'fused': True,
+                                        'is_training': self.isTraining,
+                                        'updates_collections': None,
+                                        'decay': self.bnDecay,
+                                        'scale': True}):
+                    for i in range(len(self.HFC)):
+                        net = slim.fully_connected(net, self.HFC[i],
+                                                   scope='fc' + str(i))
+                        print(net)
+                        if self.dropout:
+                            net = slim.dropout(net,
+                                               keep_prob=self.dropout,
+                                               is_training=self.isTraining)
+                            print(net)
+                net = slim.fully_connected(net, 1, activation_fn=None,
+                                           scope='out')
+                print(net)
+                # net = tf.sigmoid(net)
+                if not isTargetNN:
+                    self.summaries += [tf.summary.histogram('output', net)]
+
+        return images, actions, net
 
     def defineNN(self, isTargetNN=False):
         images = tf.placeholder(

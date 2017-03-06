@@ -21,6 +21,30 @@ class Driver:
         self.data = np.zeros((480 * 840), dtype=np.int32)
         self.cnt = 0
 
+        self.birdsPerLevel = [
+            3, # 1
+            5, # 2
+            4, # 3
+            4, # 4
+            4, # 5
+            4, # 6
+            4, # 7
+            4, # 8
+            4, # 9
+            5, # 10
+            4, # 11
+            4, # 12
+            4, # 13
+            4, # 14
+            4, # 15
+            5, # 16
+            3, # 17
+            5, # 18
+            4, # 19
+            5, # 20
+            8, # 20
+        ]
+
     """
     Configuration
     """
@@ -65,12 +89,18 @@ class Driver:
 
     def getCurrScore(self):
         self.fillObs()
+        data = np.zeros((self.height * self.width), dtype=np.int32)
+        lib.processScreenShot(ctypes.c_void_p(self.data.ctypes.data),
+                              ctypes.c_void_p(data.ctypes.data),
+                              ctypes.c_int(self.width),
+                              ctypes.c_int(self.height))
+
         dataTemp = np.zeros((32, 200), dtype=np.int32)
-        score = lib.getCurrScore(ctypes.c_void_p(self.data.ctypes.data),
+        score = lib.getCurrScore(ctypes.c_void_p(data.ctypes.data),
                                  ctypes.c_void_p(dataTemp.ctypes.data),
                                  ctypes.c_int(self.width),
                                  ctypes.c_int(self.height))
-        # print("Current Score: {}".format(score))
+        print("Current Score: {}".format(score))
         # dataTemp = dataTemp * 10000
         # im = Image.fromarray(dataTemp, mode='I')
         # print("Shape: {}".format(im.size))
@@ -184,6 +214,7 @@ class Driver:
         self.loadLevel(lvl)
         self.zoomOut()
         self.getStatePrint()
+        return lvl
 
 
     """
@@ -210,7 +241,7 @@ class Driver:
         return self.data
 
     def preprocessDataForNN(self, store=None, vgg=False):
-        self.dataNN = self.data.astype(np.float32) / 256.0
+        self.dataNN = (self.data.astype(np.float32) / 255.0)
         # self.dataNN = scipy.misc.imresize(self.dataNN, 0.25)
         if vgg:
             self.dataNN = scipy.ndimage.zoom(self.dataNN,
@@ -257,19 +288,21 @@ class Driver:
 
 
 
-    def birdCount(self):
-        self.zoomIn()
-        self.fillObs()
-        data = np.zeros((self.height * self.width), dtype=np.int32)
+    def birdCount(self, currLvl=None):
+        if currLvl is None:
+            self.zoomIn()
+            self.fillObs()
+            data = np.zeros((self.height * self.width), dtype=np.int32)
 
-        lib.processScreenShot(ctypes.c_void_p(self.data.ctypes.data),
-                              ctypes.c_void_p(data.ctypes.data),
-                              ctypes.c_int(self.width),
-                              ctypes.c_int(self.height))
+            lib.processScreenShot(ctypes.c_void_p(self.data.ctypes.data),
+                                  ctypes.c_void_p(data.ctypes.data),
+                                  ctypes.c_int(self.width),
+                                  ctypes.c_int(self.height))
 
-        self.birdCnt = lib.calcLives()
-        self.zoomOut()
-        return self.birdCnt
+            self.zoomOut()
+            return lib.calcLives()
+        else:
+            return self.birdsPerLevel[currLvl-1]
 
     def actManually(self):
         self.findSlingshot()
@@ -291,24 +324,26 @@ class Driver:
         fx = self.currCenterX
         fy = self.currCenterY
         dx = action[0]
+        # dx = 24.8
         dy = action[1]
+        # dy = 5510.0
         t1 = 0
         t2 = action[2]
 
         self.shoot(mid, fx, fy, dx, dy, t1, t2)
 
     def actionResponse(self, action, vgg=False):
-        score = self.getCurrScore()
+        # score = self.getCurrScore()
         self.act(action)
-        time.sleep(3)
-        scoreTmp = self.getCurrScore()
-        if scoreTmp >= score:
-            score = scoreTmp
-        if self.birdCnt <= 1:
-            for i in range(4):
-                time.sleep(2)
-                if self.getState() != 5:
-                    break
+        time.sleep(2)
+        # scoreTmp = self.getCurrScore()
+        # if scoreTmp >= score:
+        #     score = scoreTmp
+        # if self.birdCnt <= 1:
+        #     for i in range(4):
+        #         time.sleep(2)
+        #         if self.getState() != 5:
+        #             break
 
         self.fillObs()
         newState = self.preprocessDataForNN(vgg=vgg)
@@ -323,7 +358,7 @@ class Driver:
             terminal = True
             print("WON")
         elif gameState == 7:  # lost
-            # score = -10000
+            score = -1
             terminal = True
             print("LOST")
         else:

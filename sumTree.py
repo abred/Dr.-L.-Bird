@@ -77,7 +77,7 @@ class SumTree:
         for i in range(batch_size):
             a = segment * i
             b = segment * (i + 1)
-
+            # print(segment, a, b, i)
             s = np.random.uniform(a, b)
             (idx, p, data) = self.get(s)
             batch.append((data[0], data[1], data[2], data[3], data[4]))

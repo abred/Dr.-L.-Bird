@@ -252,7 +252,7 @@ def mean_squared_diff(x, y):
 
 
 def batch_norm(inputs,
-               scopeName=None,
+               scopeName="",
                decay=0.9,
                center=True,
                scale=True,
@@ -264,6 +264,8 @@ def batch_norm(inputs,
     original_shape = inputs.get_shape()
     original_rank = original_shape.ndims
     if original_rank == 2:
+        if outC == None:
+            outC = inputs.get_shape()[-1].value
         inputs = tf.reshape(inputs, [-1, 1, 1, outC], name="bnreshapebugi")
     bn = tf.contrib.layers.batch_norm(inputs, decay=decay, center=center,
                                       scale=scale, scope=scopeName,
@@ -282,3 +284,16 @@ def batch_norm(inputs,
         return bn, s
     else:
         return bn, []
+
+def batch_normBUG(inputs, **kwargs):
+    original_shape = inputs.get_shape()
+    original_rank = original_shape.ndims
+    if original_rank == 2:
+        outC = inputs.get_shape()[-1].value
+        inputs = tf.reshape(inputs, [-1, 1, 1, outC], name="bnreshapebugi")
+    bn = tf.contrib.layers.batch_norm(inputs, **kwargs)
+    if original_rank == 2:
+        bn = tf.reshape(bn, [-1, outC], name="bnreshapebugo")
+    # s = tf.summary.histogram('normalized', bn)
+    return bn
+
