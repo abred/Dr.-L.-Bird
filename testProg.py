@@ -8,6 +8,7 @@ from driver import *
 from drlbird import *
 import os
 
+time.sleep(60)
 
 params = parseNNArgs.parse(sys.argv[1:])
 
@@ -36,6 +37,13 @@ if params['dropout']:
     out_dir += "_" + "dropout" + str(params['dropout'])
 else:
     out_dir += "_" + "noDropout"
+
+print("tau", params['tau'])
+if params['tau']:
+    out_dir += "_" + "tau-" + str(params['tau'])
+
+print("gamma: ", params['gamma'])
+out_dir += "_gamma" + str(params['gamma'])
 
 print("batchnorm", params['batchnorm'])
 if params['batchnorm']:
@@ -87,6 +95,7 @@ if params['loadLevel']:
 else:
     out_dir += "_lvlRand"
 
+print(params['host'])
 soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 soc.connect((params['host'], 2004))
 d = DrLBird(soc)
@@ -138,4 +147,4 @@ elif algo == 2:
             break
 
 
-t = input()
+# t = input()

@@ -10,13 +10,14 @@ import numpy as np
 import logging
 logging.getLogger("tensorflow").setLevel(logging.INFO)
 import tensorflow as tf
+from tensorflow.python.framework import ops
 tf.logging.set_verbosity(tf.logging.DEBUG)
 
 from driver import Driver
 
 from ddpgPolicy import DDPGPolicy
 
-from ouNoise import OUNoise
+# from ouNoise import OUNoise
 from replay_buffer import ReplayBuffer
 from sumTree import SumTree
 
@@ -30,26 +31,29 @@ class DrLBird(Driver):
         useVGG = params['useVGG']
         prioritized = params['prioritized']
         self.lock = threading.Lock()
+        self.annealSteps = float(2000)
+        self.cnt=0
 
         with tf.Session() as sess:
             episode_reward = tf.Variable(0., name="episodeReward")
-            tf.summary.scalar("Reward", episode_reward)
+            sumRew = tf.summary.scalar("Reward", episode_reward)
             episode_ave_max_q = tf.Variable(0., name='epsideAvgMaxQ')
-            tf.summary.scalar("Qmax_Value", episode_ave_max_q)
+            sumQ = tf.summary.scalar("Qmax_Value", episode_ave_max_q)
             actionDx = tf.Variable(0., name='actionDx')
-            tf.summary.scalar("Action_Dx", actionDx)
+            sumDx = tf.summary.scalar("Action_Dx", actionDx)
             actionDy = tf.Variable(0., name='actionDy')
-            tf.summary.scalar("Action_Dy", actionDy)
+            sumDy = tf.summary.scalar("Action_Dy", actionDy)
             actionT = tf.Variable(0., name='actionT')
-            tf.summary.scalar("Action_T", actionT)
-            summary_vars = [episode_reward, episode_ave_max_q,
-                            actionDx, actionDy, actionT]
-            summary_ops = tf.summary.merge_all()
+            sumT = tf.summary.scalar("Action_T", actionT)
+            summary_vars = [episode_reward, episode_ave_max_q]
+            summary_ops = tf.summary.merge([sumRew, sumQ])
+            action_summary_vars = [actionDx, actionDy, actionT]
+            action_summary_ops = tf.summary.merge([sumDx, sumDy, sumT])
 
             if not params['resume']:
                 if not os.path.exists(out_dir):
                     os.makedirs(out_dir)
-                print("new start...")
+                print("new start... {}".format(out_dir))
                 config = json.dumps(params)
                 with open(os.path.join(out_dir, "config"), 'w') as f:
                     f.write(config)
@@ -57,11 +61,22 @@ class DrLBird(Driver):
                 out_dir = params['resume']
                 print("resuming... ", out_dir)
 
+            if os.environ['SLURM_JOB_NAME'] != 'zsh':
+                sys.stdout.flush()
+                sys.stdout = open(os.path.join(out_dir, "log"), 'w')
+            print("slurm jobid: {}".format(os.environ['SLURM_JOBID']))
+
             shutil.copy2('drlbird.py', os.path.join(out_dir, 'drlbird.py'))
             shutil.copy2('tfUtils.py', os.path.join(out_dir, 'tfUtils.py'))
             shutil.copy2('ddpgActor.py', os.path.join(out_dir, 'ddpgActor.py'))
-            shutil.copy2('ddpgCritic.py', os.path.join(out_dir, 'ddpgCritic.py'))
-            shutil.copy2('ddpgPolicy.py', os.path.join(out_dir, 'ddpgPolicy.py'))
+            shutil.copy2('ddpgCritic.py',
+                         os.path.join(out_dir, 'ddpgCritic.py'))
+            shutil.copy2('ddpgPolicy.py',
+                         os.path.join(out_dir, 'ddpgPolicy.py'))
+            shutil.copy2("replay_buffer.py",
+                         os.path.join(out_dir, "replay_buffer.py"))
+            shutil.copy2("sumTree.py",os.path.join(out_dir, "sumTree.py"))
+
             print("Summaries will be written to: {}\n".format(out_dir))
 
             self.global_step = tf.Variable(0, name='global_step',
@@ -77,9 +92,14 @@ class DrLBird(Driver):
             episode_step = tf.Variable(0, name='episode_step',
                                        trainable=False, dtype=tf.int32)
             increment_ep_step_op = tf.assign(episode_step, episode_step+1)
-            action_step = tf.Variable(0, name='action_step',
+            action_step_sum = tf.Variable(0, name='action_step_sum',
                                       trainable=False, dtype=tf.int32)
-            increment_ac_step_op = tf.assign(action_step, action_step+1)
+            increment_ac_sum_step_op = tf.assign(action_step_sum,
+                                                 action_step_sum+1)
+            action_step_eps = tf.Variable(0, name='action_step_eps',
+                                      trainable=False, dtype=tf.int32)
+            increment_ac_eps_step_op = tf.assign(action_step_eps,
+                                             action_step_eps+1)
             sess.run(tf.initialize_all_variables())
 
             replayBufferSize = 10000
@@ -88,14 +108,24 @@ class DrLBird(Driver):
             self.gamma = self.params['gamma']
             self.startLearning = self.params['startLearning']
             if prioritized:
-                self.replay = SumTree(replayBufferSize)
+                self.replay = SumTree(replayBufferSize,
+                                  self.params['miniBatchSize'],
+                                  self.annealSteps*20)
                 print("using SumTree")
             else:
                 self.replay = ReplayBuffer(replayBufferSize)
                 print("using linear Buffer")
-            epsilon = 0.2
+            self.startEpsilon = 1.0
+            self.endEpsilon = 0.1
+            self.epsilon = self.startEpsilon
             explT = 50
             cnt = 1
+
+            if self.params['useVGG'] and not self.params['resume']:
+                self.policy.vggsaver.restore(
+                    sess,
+                    '/home/s7550245/convNet/vgg-model')
+                print("VGG restored.")
 
             self.saver = tf.train.Saver()
             if params['resume']:
@@ -118,15 +148,17 @@ class DrLBird(Driver):
                 t.start()
 
             fs = sess.run(episode_step)
-            acs = sess.run(action_step)
-            ac = acs
+            acS = sess.run(action_step_sum)
+            acE = sess.run(action_step_eps)
+            acs = acS
+            ace = acE
             for e in range(fs, self.maxEpisodes):
                 if self.params['async']:
                     if not t.isAlive():
                         break
 
                 sess.run(increment_ep_step_op)
-                epsilon = 1.0 / (math.pow(e+1, 1.0/3.0))
+                # epsilon = 1.0 / (math.pow(e+1, 1.0/3.0))
                 oldScore = 0
                 terminal = False
                 ep_reward = 0
@@ -149,33 +181,42 @@ class DrLBird(Driver):
                         break
 
                     step += 1
+                    sess.run(increment_ac_eps_step_op)
+                    ace += 1
+                    tmp_step = min(ace, self.annealSteps)
+                    self.epsilon = (self.startEpsilon - self.endEpsilon) * \
+                                   (1 - tmp_step / self.annealSteps) + \
+                                   self.endEpsilon
                     if ((not evalu) and
-                        (e < explT or np.random.rand() < epsilon)):
+                        (e < explT or np.random.rand() < self.epsilon)):
                         action = np.array([[np.random.rand(),
                                             np.random.rand(),
                                             np.random.rand()]])
                         a_scaled = action * np.array([[50.0, 9000.0, 4000.0]])
-                        print("Next action (e-greedy): {}\n".format(a_scaled))
+                        print("Step: {} Next action (e-greedy {}): {}".format(
+                            ace,
+                            self.epsilon,
+                            a_scaled))
                     else:
                         action = self.policy.getActions(state)
                         a_scaled = action * np.array([[50.0, 9000.0, 4000.0]])
-                        print("Next action: {}\n".format(a_scaled))
+                        print("Step: {} Next action: {}".format(ace, a_scaled))
 
-                    sess.run(increment_ac_step_op)
-                    ac += 1
-                    action_summary_str = sess.run(action_summary_ops,
-                                                  feed_dict={
-                        action_summary_vars[0]: a_scaled[0],
-                        action_summary_vars[1]: a_scaled[1],
-                        action_summary_vars[2]: a_scaled[2],
-                                                  })
+                        sess.run(increment_ac_sum_step_op)
+                        acs += 1
+                        action_summary_str = sess.run(action_summary_ops,
+                                                      feed_dict={
+                            action_summary_vars[0]: a_scaled[0][0],
+                            action_summary_vars[1]: a_scaled[0][1],
+                            action_summary_vars[2]: a_scaled[0][2],
+                                                      })
 
-                    if evalu:
-                        writerTest.add_summary(action_summary_str, ac-acs)
-                        writerTest.flush()
-                    else:
-                        writerTrain.add_summary(action_summary_str, ac)
-                        writerTrain.flush()
+                        if evalu:
+                            writerTest.add_summary(action_summary_str, acs-acS)
+                            writerTest.flush()
+                        else:
+                            writerTrain.add_summary(action_summary_str, acs)
+                            writerTrain.flush()
 
                     score, terminal, newState = \
                         self.actionResponse(a_scaled[0], vgg=useVGG)
@@ -196,13 +237,8 @@ class DrLBird(Driver):
                     if evalu:
                         continue
 
-                    if prioritized:
-                        self.replay.add(
-                            999.9,
-                            (state, action, reward, terminal, newState))
-                    else:
-                        self.replay.add(
-                            state, action, reward, terminal, newState)
+                    self.insertSamples(state, action, reward, terminal,
+                                       newState)
 
                     if not self.params['async']:
                         self.learn()
@@ -240,28 +276,26 @@ class DrLBird(Driver):
 
     def learn(self):
         while True:
-            if self.replay.size() < self.startLearning:
+            if self.replay.size() < self.startLearning or \
+               self.replay.size() < self.miniBatchSize:
                 if self.params['async']:
                     continue
                 else:
                     return
 
+            self.lock.acquire()
             if self.params['prioritized']:
-                ids, \
-                    s_batch, a_batch, r_batch, t_batch, ns_batch = \
+                ids, w_batch, s_batch, a_batch, r_batch, t_batch, ns_batch = \
                         self.replay.sample_batch(self.miniBatchSize)
-                print(ids)
+                # print(ids)
             else:
                 s_batch, a_batch, r_batch, t_batch, ns_batch = \
                     self.replay.sample_batch(self.miniBatchSize)
+            self.lock.release()
 
             qValsNewState = self.policy.predict_target_nn(ns_batch)
             y_batch = np.zeros((self.miniBatchSize, 1))
             if self.params['importanceSampling']:
-                w_batch = np.zeros((self.miniBatchSize, 1))
-                for i in range(self.miniBatchSize):
-                    w_batch[i] = math.pow(self.replay.size() * ps_batch[i],
-                                          -self.replay.beta)
                 wMax = np.max(w_batch)
                 for i in range(self.miniBatchSize):
                     if t_batch[i]:
@@ -269,7 +303,6 @@ class DrLBird(Driver):
                     else:
                         y_batch[i] = w_batch[i] / wMax * \
                             (r_batch[i] + self.gamma * qValsNewState[i])
-                self.replay.beta += min(1.0, 0.0000625 * self.replay.beta)
             else:
                 for i in range(self.miniBatchSize):
                     if t_batch[i]:
@@ -278,14 +311,35 @@ class DrLBird(Driver):
                         y_batch[i] = r_batch[i] + \
                             self.gamma * qValsNewState[i]
 
+            # print(r_batch, qValsNewState, y_batch)
             if self.params['prioritized']:
                 for i in range(self.miniBatchSize):
                     self.replay.update(ids[i], abs(y_batch[i]))
 
-            qs = self.policy.update(s_batch, a_batch, y_batch)
+            gs, qs, delta = self.policy.update(s_batch, a_batch, y_batch)
+            if self.params['prioritized']:
+                self.lock.acquire()
+                for i in range(self.miniBatchSize):
+                    self.replay.update(ids[i], abs(delta[i]))
+                self.lock.release()
             # ep_ave_max_q += np.amax(qs)
 
             self.policy.update_targets()
 
             if not self.params['async']:
                 return
+
+    def insertSamples(self, state, action, reward, terminal, newState):
+        # print(state.shape)
+        # print(newState.shape)
+        # state.shape = (state.shape[1],
+        #                state.shape[2],
+        #                state.shape[3])
+        # newState.shape = (newState.shape[1],
+        #                   newState.shape[2],
+        #                   newState.shape[3])
+
+        if self.params['prioritized']:
+            self.replay.add(None, (state, action, reward, terminal, newState))
+        else:
+            self.replay.add(state, action, reward, terminal, newState)

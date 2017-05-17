@@ -95,3 +95,6 @@ save.p
 currScore.png
 *.o
 runs/
+
+execSbatch.sh
+tempFiles/*

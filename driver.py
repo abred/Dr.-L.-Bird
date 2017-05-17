@@ -1,3 +1,5 @@
+from keras.applications.vgg16 import preprocess_input
+
 import ctypes
 import math
 import time
@@ -241,27 +243,28 @@ class Driver:
         return self.data
 
     def preprocessDataForNN(self, store=None, vgg=False):
-        self.dataNN = (self.data.astype(np.float32) / 255.0)
-        # self.dataNN = scipy.misc.imresize(self.dataNN, 0.25)
         if vgg:
+            # self.dataNN = preprocess_input(self.data)
+            self.dataNN = self.data.astype(np.float32) - 127.0
             self.dataNN = scipy.ndimage.zoom(self.dataNN,
                                          (224.0/480.0, 224.0/840.0, 1),
                                          order=1)
         else:
+            self.dataNN = self.data.astype(np.float32) / 255.0
             self.dataNN = scipy.ndimage.zoom(self.dataNN, (0.25, 0.25, 1),
                                              order=1)
-        self.dataNN.shape = (1, self.height / 4, self.width / 4, 3)
-        # self.dataNN.shape = (1,
-        #                      self.dataNN.shape[0],
-        #                      self.dataNN.shape[1],
-        #                      self.dataNN.shape[2])
+        # self.dataNN.shape = (1, self.height / 4, self.width / 4, 3)
+        self.dataNN.shape = (1,
+                             self.dataNN.shape[0],
+                             self.dataNN.shape[1],
+                             self.dataNN.shape[2])
         print(self.dataNN.shape)
         if store is not None:
             tmp = np.copy(self.dataNN)
             tmp *= 256.0
-            tmp.shape =  (self.height / 4, self.width / 4 * 3)
-            # tmp.shape = (self.dataNN.shape[1],
-            #              self.dataNN.shape[2] * self.dataNN.shape[3])
+            # tmp.shape =  (self.height / 4, self.width / 4 * 3)
+            tmp.shape = (self.dataNN.shape[1],
+                         self.dataNN.shape[2] * self.dataNN.shape[3])
             png.from_array(tmp.astype(np.uint8), 'RGB').save(
                 "/scratch/s7550245/Dr.-L.-Bird/processedFrame_" +
                 str(self.cnt) + ".png")
