@@ -37,8 +37,8 @@ class Critic:
         self.weight_summaries = []
         self.out_dir = out_dir
         if params['batchnorm']:
-            # self.batchnorm = slim.batch_norm
-            self.batchnorm = tfu.batch_normBUG
+            self.batchnorm = slim.batch_norm
+            # self.batchnorm = tfu.batch_normBUG
         else:
             self.batchnorm = None
 
@@ -76,7 +76,7 @@ class Critic:
 
         with tf.variable_scope('Critic'):
             self.keep_prob = tf.placeholder(tf.float32)
-            self.isTraining = tf.placeholder(tf.bool)
+            self.isTraining = tf.placeholder(tf.bool, [])
 
             # Critic Network
             self.setNN()
@@ -84,8 +84,6 @@ class Critic:
             self.loss_op = self.define_loss()
             self.train_op = self.defineTraining()
 
-            self.action_grads = self.define_action_grad()
-            self.grads = self.define_grads()
 
 
         _VARSTORE_KEY = ("__variable_store",)
@@ -96,20 +94,44 @@ class Critic:
 
         for v in variables:
             print(v.name)
+            if v.name.startswith("Critic/inf/fc0/weights"):
+                self.testw = v
+            if v.name == "Critic/inf/fc0/BatchNorm/beta:0":
+                self.fc0bnb = v
+            if v.name == "Critic/inf/fc0/BatchNorm/gamma:0":
+                self.fc0bng = v
+            if v.name == "Critic/inf/fc0/BatchNorm/moving_mean:0":
+                self.fc0bnmm = v
+            if v.name == "Critic/inf/fc0/BatchNorm/moving_variance:0":
+                self.fc0bnmv = v
+            if v.name == "Critic/inf/fc1/BatchNorm/beta:0":
+                self.fc1bnb = v
+            if v.name == "Critic/inf/fc1/BatchNorm/gamma:0":
+                self.fc1bng = v
+            if v.name == "Critic/inf/fc1/BatchNorm/moving_mean:0":
+                self.fc1bnmm = v
+            if v.name == "Critic/inf/fc1/BatchNorm/moving_variance:0":
+                self.fc1bnmv = v
             if v.name.endswith("weights:0") or \
                v.name.endswith("biases:0"):
                 s = []
                 var = v
                 mean = tf.reduce_mean(var)
-                s.append(tf.summary.scalar(v.name+'mean', mean))
+                s.append(tf.summary.scalar(v.name[:-2]+'mean', mean))
                 with tf.name_scope('stddev'):
                     stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
-                s.append(tf.summary.scalar(v.name+'stddev', stddev))
-                s.append(tf.summary.scalar(v.name+'max', tf.reduce_max(var)))
-                s.append(tf.summary.scalar(v.name+'min', tf.reduce_min(var)))
-                s.append(tf.summary.histogram(v.name+'histogram', var))
+                s.append(tf.summary.scalar(v.name[:-2]+'stddev', stddev))
+                s.append(tf.summary.scalar(v.name[:-2]+'max',
+                                           tf.reduce_max(var)))
+                s.append(tf.summary.scalar(v.name[:-2]+'min',
+                                           tf.reduce_min(var)))
+                s.append(tf.summary.histogram(v.name[:-2]+'histogram', var))
 
                 self.weight_summaries += s
+
+        self.action_grads = self.define_action_grad()
+        self.grads = self.define_grads()
+
         self.summary_op = tf.summary.merge(self.summaries)
         self.weight_summary_op = tf.summary.merge(self.weight_summaries)
         self.writer = tf.summary.FileWriter(out_dir, sess.graph)
@@ -122,13 +144,17 @@ class Critic:
         else:
             defNN = self.defineNN
 
-        self.input_pl, self.actions_pl, self.nn = defNN()
+        self.actions_pl = tf.placeholder(tf.float32,
+                                         shape=[None, self.actions_dim],
+                                         name='ActorActions')
+
+        self.input_pl, self.nn = defNN()
         self.nn_params = tf.trainable_variables()[prevTrainVarCount:]
 
         # Target Network
         with tf.variable_scope('target'):
             prevTrainVarCount = len(tf.trainable_variables())
-            self.target_input_pl, self.target_actions_pl, self.target_nn =\
+            self.target_input_pl,  self.target_nn =\
                 defNN(isTargetNN=True)
             self.target_nn_params = \
                 tf.trainable_variables()[prevTrainVarCount:]
@@ -196,14 +222,14 @@ class Critic:
                 remSzX = int(self.vgg_state_dim / 2**numPool)
                 print(remSzY, remSzX, net, H)
 
-                # net = tf.concat(
-                #     [tf.reshape(net, [-1, remSzX*remSzY*H],
-                #                 name='flatten'),
-                #      actions], 1)
-                net = tf.concat(1,
+                net = tf.concat(
                     [tf.reshape(net, [-1, remSzX*remSzY*H],
                                 name='flatten'),
-                     actions])
+                     actions], 1)
+                # net = tf.concat(1,
+                #     [tf.reshape(net, [-1, remSzX*remSzY*H],
+                #                 name='flatten'),
+                #      actions])
 
                 for i in range(len(self.HFC)):
                     net = slim.fully_connected(net, 512,
@@ -233,9 +259,9 @@ class Critic:
                        self.state_dim_x,
                        self.col_channels],
                 name='input')
-            actions = tf.placeholder(tf.float32,
-                                     shape=[None, self.actions_dim],
-                                     name='ActorActions')
+            # actions = tf.placeholder(tf.float32,
+            #                          shape=[None, self.actions_dim],
+            #                          name='ActorActions')
 
             net = images
             with slim.arg_scope(
@@ -273,22 +299,26 @@ class Critic:
 
                 remSzY = int(self.state_dim_y / 2**4)
                 remSzX = int(self.state_dim_x / 2**4)
-                # net = tf.concat(
+                net = tf.reshape(net, [-1, remSzX*remSzY*self.Hconv4],
+                                 name='flatten')
+                print(net)
+                net = tf.concat(
+                    [net,
+                     self.actions_pl], 1)
+                print(net)
+                self.net2 = net
+                # net = tf.concat(1,
                 #     [tf.reshape(net, [-1, remSzX*remSzY*self.Hconv4],
                 #                 name='flatten'),
-                #      actions], 1)
-                net = tf.concat(1,
-                    [tf.reshape(net, [-1, remSzX*remSzY*self.Hconv4],
-                                name='flatten'),
-                     actions])
+                #      actions])
 
                 with slim.arg_scope([slim.fully_connected],
                                     normalizer_fn=self.batchnorm,
                                     normalizer_params={
                                         'fused': True,
-                                        'is_training': self.isTraining,
-                                        'updates_collections': None,
                                         'decay': self.bnDecay,
+                                        'updates_collections': None,
+                                        'is_training': self.isTraining,
                                         'scale': True}):
                     for i in range(len(self.HFC)):
                         net = slim.fully_connected(net, self.HFC[i],
@@ -308,22 +338,22 @@ class Critic:
                 if not isTargetNN:
                     self.weight_summaries += [tf.summary.histogram('output', net)]
 
-        return images, actions, net
+        return images,  net
 
     def define_update_target_nn_op(self):
         with tf.variable_scope('update'):
             tau = tf.constant(self.tau, name='tau')
             invtau = tf.constant(1.0-self.tau, name='invtau')
-            # return \
-            #     [self.target_nn_params[i].assign(
-            #         tf.multiply(self.nn_params[i], tau) +
-            #         tf.multiply(self.target_nn_params[i], invtau))
-            #      for i in range(len(self.target_nn_params))]
             return \
                 [self.target_nn_params[i].assign(
-                    tf.mul(self.nn_params[i], tau) +
-                    tf.mul(self.target_nn_params[i], invtau))
+                    tf.multiply(self.nn_params[i], tau) +
+                    tf.multiply(self.target_nn_params[i], invtau))
                  for i in range(len(self.target_nn_params))]
+            # return \
+            #     [self.target_nn_params[i].assign(
+            #         tf.mul(self.nn_params[i], tau) +
+            #         tf.mul(self.target_nn_params[i], invtau))
+            #      for i in range(len(self.target_nn_params))]
 
     def define_loss(self):
         with tf.variable_scope('loss2'):
@@ -332,15 +362,15 @@ class Critic:
             in1 = tf.Print(self.td_targets_pl, [self.td_targets_pl], "targets ", first_n=15, summarize=100)
             in2 = tf.Print(self.nn, [self.nn], "nn ", first_n=15, summarize=100)
             self.delta = in1 - in2
-            # lossL2 = slim.losses.mean_squared_error(in1, in2)
+            lossL2 = slim.losses.mean_squared_error(in1, in2)
             # lossL2 = tfu.mean_squared_diff(self.td_targets_pl, self.nn)
             # Huber loss
             # lossL2 = tf.where(tf.abs(self.delta) < 1.0,
             #                   0.5 * tf.square(self.delta),
             #                   tf.abs(self.delta) - 0.5, name='clipped_error')
-            lossL2 = tf.select(tf.abs(self.delta) < 1.0,
-                               0.5 * tf.square(self.delta),
-                               tf.abs(self.delta) - 0.5, name='clipped_error')
+            # lossL2 = tf.select(tf.abs(self.delta) < 1.0,
+            #                    0.5 * tf.square(self.delta),
+            #                    tf.abs(self.delta) - 0.5, name='clipped_error')
             lossL2 = tf.reduce_mean(lossL2)
             # lossL2 = slim.losses.mean_squared_error(self.td_targets_pl,
                                                     # self.nn)
@@ -381,23 +411,47 @@ class Critic:
                     self.learning_rate)
 
             print(optimizer)
-            # grads_and_vars = optimizer.compute_gradients(self.loss_op)
-            # grads = []
-            # vars = []
-            # for (g,v) in grads_and_vars:
-            #     vars.append(v)
-            #     if g is None:
-            #         grads.append(g)
-            #     else:
-            #         grads.append(tf.Print(g, [g], "critic grads ", first_n=10))
-            # return optimizer.apply_gradients(zip(grads, vars),
-            #                                  global_step=self.global_step)
-            return optimizer.minimize(self.loss_op,
-                                      global_step=self.global_step)
+            grads_and_vars = optimizer.compute_gradients(self.loss_op)
+            grads = []
+            vars = []
+            for (g,v) in grads_and_vars:
+                vars.append(v)
+                if g is None:
+                    grads.append(g)
+                else:
+                    grads.append(tf.Print(g, [g], v.name+"critic grads ", first_n=10))
+            return optimizer.apply_gradients(zip(grads, vars),
+                                             global_step=self.global_step)
+            # return optimizer.minimize(self.loss_op,
+                                      # global_step=self.global_step)
 
     def define_action_grad(self):
         with tf.variable_scope('getActionGradient'):
-            return tf.gradients(self.nn, self.actions_pl)[0]
+            print(self.nn)
+            print(self.testw)
+            if self.batchnorm is None:
+                nn = tf.Print(self.nn, [self.nn],"getactiongradsOut", first_n=10, summarize=100000)
+            else:
+                nn = tf.Print(self.nn, [self.fc0bnb,
+                                    self.fc0bng,
+                                    self.fc0bnmm,
+                                    self.fc0bnmv,
+                                    self.fc1bnb,
+                                    self.fc1bng,
+                                    self.fc1bnmm,
+                                    self.fc1bnmv,
+                                    self.nn], "getactiongradsOut", first_n=10, summarize=100000)
+            ac = tf.Print(self.testw, [self.testw], "getactiongradAct", first_n=10)
+            gd = tf.gradients(nn, self.actions_pl)
+            # print(tf.trainable_variables())
+            grads = []
+            for i in range(len(gd)):
+                print(gd[i])
+                grads.append(tf.Print(gd[i], [gd[i]], "actiongrads", first_n=10))
+                # print(nn, ac, gd[i])
+            return grads[0]
+            # return tf.Print(gd, [gd], "actiongrads", first_n=10)
+            # return tf.gradients(self.nn, self.actions_pl)[0]
 
     def define_grads(self):
         with tf.variable_scope('getGrads'):
@@ -468,7 +522,7 @@ class Critic:
     def run_predict_target(self, inputs, action):
         return self.sess.run(self.target_nn, feed_dict={
             self.target_input_pl: inputs,
-            self.target_actions_pl: action,
+            self.actions_pl: action,
             self.isTraining: False,
             self.keep_prob: 1.0
         })
@@ -485,7 +539,7 @@ class Critic:
         return self.sess.run(self.action_grads, feed_dict={
             self.input_pl: inputs,
             self.actions_pl: actions,
-            self.isTraining: False,
+            self.isTraining: True,
             self.keep_prob: 1.0
         })
 

@@ -38,8 +38,8 @@ class Actor:
         # self.summaries = []
         self.weight_summaries = []
         if params['batchnorm']:
-            # self.batchnorm = slim.batch_norm
-            self.batchnorm = tfu.batch_normBUG
+            self.batchnorm = slim.batch_norm
+            # self.batchnorm = tfu.batch_normBUG
         else:
             self.batchnorm = None
 
@@ -94,13 +94,15 @@ class Actor:
                 s = []
                 var = v
                 mean = tf.reduce_mean(var)
-                s.append(tf.summary.scalar(v.name+'mean', mean))
+                s.append(tf.summary.scalar(v.name[:-2]+'mean', mean))
                 with tf.name_scope('stddev'):
                     stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
-                s.append(tf.summary.scalar(v.name+'stddev', stddev))
-                s.append(tf.summary.scalar(v.name+'max', tf.reduce_max(var)))
-                s.append(tf.summary.scalar(v.name+'min', tf.reduce_min(var)))
-                s.append(tf.summary.histogram(v.name+'histogram', var))
+                s.append(tf.summary.scalar(v.name[:-2]+'stddev', stddev))
+                s.append(tf.summary.scalar(v.name[:-2]+'max',
+                                           tf.reduce_max(var)))
+                s.append(tf.summary.scalar(v.name[:-2]+'min',
+                                           tf.reduce_min(var)))
+                s.append(tf.summary.histogram(v.name[:-2]+'histogram', var))
 
                 self.weight_summaries += s
 
@@ -207,8 +209,8 @@ class Actor:
                 net = tf.Print(net, [net], "outputActor:", summarize=1000,
                                first_n=10)
                 if not isTargetNN:
-                    # r, th, t = tf.split(net, 3, 1)
-                    r, th, t = tf.split(1, 3, net)
+                    r, th, t = tf.split(net, 3, 1)
+                    # r, th, t = tf.split(1, 3, net)
                     r_o = 50.0 * tf.sigmoid(r)
                     th_o = 9000.0 * tf.sigmoid(th)
                     t_o = 4000.0 * tf.sigmoid(t)
@@ -303,11 +305,11 @@ class Actor:
                 net = slim.fully_connected(net, self.actions_dim,
                                            activation_fn=None,
                                            scope='out')
-                net = tf.Print(net, [net], "outputCritic:", summarize=1000,
+                net = tf.Print(net, [net], "outputActor:", summarize=1000,
                                first_n=10)
-                print(net)
-                # r, th, t = tf.split(net, 3, 1)
-                r, th, t = tf.split(1, 3, net)
+                # print(net)
+                r, th, t = tf.split(net, 3, 1)
+                # r, th, t = tf.split(1, 3, net)
                 r_o = 50.0 * tf.sigmoid(r)
                 th_o = 9000.0 * tf.sigmoid(th)
                 t_o = 4000.0 * tf.sigmoid(t)
@@ -334,16 +336,16 @@ class Actor:
         with tf.variable_scope('update'):
             tau = tf.constant(self.tau, name='tau')
             invtau = tf.constant(1.0-self.tau, name='invtau')
-            # return \
-            #     [self.target_nn_params[i].assign(
-            #         tf.multiply(self.nn_params[i], tau) +
-            #         tf.multiply(self.target_nn_params[i], invtau))
-            #      for i in range(len(self.target_nn_params))]
             return \
                 [self.target_nn_params[i].assign(
-                    tf.mul(self.nn_params[i], tau) +
-                    tf.mul(self.target_nn_params[i], invtau))
+                    tf.multiply(self.nn_params[i], tau) +
+                    tf.multiply(self.target_nn_params[i], invtau))
                  for i in range(len(self.target_nn_params))]
+            # return \
+            #     [self.target_nn_params[i].assign(
+            #         tf.mul(self.nn_params[i], tau) +
+            #         tf.mul(self.target_nn_params[i], invtau))
+            #      for i in range(len(self.target_nn_params))]
 
     def defineTraining(self):
         with tf.variable_scope('train'):
@@ -352,21 +354,22 @@ class Actor:
                 [None, self.actions_dim],
                 name='CriticActionsGradient')
 
-            self.actor_gradients = tf.gradients(
+            cag = tf.Print(self.critic_actions_gradient_pl, [self.critic_actions_gradient_pl], "cag", first_n=10)
+            gd = tf.gradients(
                 self.nn,
                 self.nn_params,
                 # critic grad descent
                 # here ascent -> negative
-                -self.critic_actions_gradient_pl)
+                -cag)
 
-        # grads = []
-        # for g in self.actor_gradients:
-        #     if g is None:
-        #         grads.append(g)
-        #     else:
-        #         # grads.append(tf.Print(g, [g], "actor grads ", first_n = 10))
-        #         grads.append(tf.clip_by_value(g, -1, 1))
-        # self.actor_gradients = grads
+        grads = []
+        for i in range(len(gd)):
+            if gd[i] is None:
+                grads.append(gd[i])
+            else:
+                grads.append(tf.Print(gd[i], [gd[i]], self.nn_params[i].name+"actor grads ", first_n = 10))
+                # grads.append(tf.clip_by_value(g, -1, 1))
+        self.actor_gradients = grads
 
         if self.opti == 'momentum':
             optimizer = tf.train.MomentumOptimizer(self.learning_rate,

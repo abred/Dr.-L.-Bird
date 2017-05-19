@@ -26,7 +26,7 @@ def recv_timeout(the_socket,timeout=2):
 
 def recvall(sock, n):
     # Helper function to recv n bytes or return None if EOF is hit
-    data = ''
+    data = b''
     while len(data) < n:
         packet = sock.recv(n - len(data))
         if not packet:

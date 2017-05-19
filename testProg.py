@@ -8,7 +8,7 @@ from driver import *
 from drlbird import *
 import os
 
-time.sleep(60)
+# time.sleep(60)
 
 params = parseNNArgs.parse(sys.argv[1:])
 

@@ -152,9 +152,9 @@ class SumTree:
         self.write = 0
 
     def dump(self, fn):
-        with open(fn, 'w') as f:
+        with open(fn, 'wb') as f:
             pickle.dump((self.tree, self.data, self.write), f)
 
     def load(self, fn):
-        with open(fn, 'r') as f:
+        with open(fn, 'rb') as f:
             self.tree, self.data, self.write = pickle.load(f)
