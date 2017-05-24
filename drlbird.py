@@ -194,11 +194,11 @@ class DrLBird(Driver):
                                             np.random.rand()]])
                         # a_scaled = action * np.array([[-50.0, 50.0, 4000.0]])
 
-                        a_scaled = action * np.array([[70.0, 70.0, 4000.0]])
-                        a_scaled = a_scaled + np.array([[10.0, 10.0, 0.0]])
+                        # a_scaled = action * np.array([[70.0, 70.0, 4000.0]])
+                        # a_scaled = a_scaled + np.array([[10.0, 10.0, 0.0]])
 
-                        # a_scaled = action * np.array([[160.0, 160.0, 4000.0]])
-                        # a_scaled = a_scaled + np.array([[-80.0, -80.0, 0.0]])
+                        a_scaled = action * np.array([[160.0, 160.0, 4000.0]])
+                        a_scaled = a_scaled + np.array([[-80.0, -80.0, 0.0]])
 
                         print("Step: {} Next action (e-greedy {}): {}".format(
                             ace,
@@ -208,11 +208,11 @@ class DrLBird(Driver):
                         action = self.policy.getActions(state)
                         # a_scaled = action
 
-                        a_scaled = action * np.array([[70.0, 70.0, 4000.0]])
-                        a_scaled = a_scaled + np.array([[10.0, 10.0, 0.0]])
+                        # a_scaled = action * np.array([[70.0, 70.0, 4000.0]])
+                        # a_scaled = a_scaled + np.array([[10.0, 10.0, 0.0]])
 
-                        # a_scaled = action * np.array([[160.0, 160.0, 4000.0]])
-                        # a_scaled = a_scaled + np.array([[-80.0, -80.0, 0.0]])
+                        a_scaled = action * np.array([[160.0, 160.0, 4000.0]])
+                        a_scaled = a_scaled + np.array([[-80.0, -80.0, 0.0]])
 
                         print("Step: {} Next action: {}".format(ace, a_scaled))
 

@@ -324,15 +324,22 @@ class Driver:
 
     def act(self, action):
         mid = 2
-        p0 = [0.0, 0.0]
-        p1 = [-50.0, 0.0]
-        l1m = 1.0 * np.tan(action[0]/180.0*np.pi)
-        l1n = 0.0
-        l2m = -1.0 * np.tan(action[1]/180.0*np.pi)
+        p1 = [0.0, -50.0]
+        p2 = [-50.0, 0.0]
+        l1m = -1.0 * np.tan(action[0]/180.0*np.pi)
+        l1n = -50.0 - l1m * 0.0
+        l2m = 1.0 * np.tan(action[1]/180.0*np.pi)
         l2n = 0.0 - l2m * (-50.0)
 
         ix = (l2n - l1n)/(l1m-l2m)
         iy = (l1m*l2n-l2m*l1n)/(l1m-l2m)
+
+        d = np.sqrt(ix * ix + iy * iy)
+        print(ix, iy)
+        if d > 50.0:
+            ix = ix / d * 50.0
+            iy = iy / d * 50.0
+        print(ix, iy)
         fx = self.currCenterX
         fy = self.currCenterY
         # dx = action[0]
@@ -346,8 +353,6 @@ class Driver:
         print(action, ix, iy)
 
         self.shoot(mid, fx, fy, dx, dy, t1, t2)
-
-
 
     def actionResponse(self, action, vgg=False):
         # score = self.getCurrScore()
