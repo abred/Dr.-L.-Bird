@@ -315,25 +315,39 @@ class Driver:
         fx = self.currCenterX
         # fy = int(input("y-coord: "))
         fy = self.currCenterY
-        dx = int(input("dx/theta: "))
-        dy = int(input("dy/radius: "))
+        dx = int(input("dx/radius: "))
+        dy = int(input("dy/theta: "))
         t1 = int(input("time0: "))
         t2 = int(input("time1: "))
 
         self.shoot(mid, fx, fy, dx, dy, t1, t2)
 
     def act(self, action):
-        mid = 4
+        mid = 2
+        p0 = [0.0, 0.0]
+        p1 = [-50.0, 0.0]
+        l1m = 1.0 * np.tan(action[0]/180.0*np.pi)
+        l1n = 0.0
+        l2m = -1.0 * np.tan(action[1]/180.0*np.pi)
+        l2n = 0.0 - l2m * (-50.0)
+
+        ix = (l2n - l1n)/(l1m-l2m)
+        iy = (l1m*l2n-l2m*l1n)/(l1m-l2m)
         fx = self.currCenterX
         fy = self.currCenterY
-        dx = action[0]
+        # dx = action[0]
+        dx = ix
         # dx = 24.8
-        dy = action[1]
+        # dy = action[1]
+        dy = -iy
         # dy = 5510.0
         t1 = 0
         t2 = action[2]
+        print(action, ix, iy)
 
         self.shoot(mid, fx, fy, dx, dy, t1, t2)
+
+
 
     def actionResponse(self, action, vgg=False):
         # score = self.getCurrScore()

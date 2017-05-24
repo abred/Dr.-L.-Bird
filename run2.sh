@@ -7,11 +7,11 @@
 #SBATCH -c 1
 #SBATCH --time 1-00:00:00
 ###SBATCH --time 0-01:00:00
-#SBATCH --mem 4G
+#SBATCH --mem 8G
 #SBATCH --mail-type=END,FAIL,TIME_LIMIT_90
 #SBATCH --mail-user=s7550245@msx.tu-dresden.de
 #SBATCH -o /scratch/s7550245/Dr.-L.-Bird/log.%j
-###SBATCH -x taurusi1102
+###SBATCH -x taurusi1162,taurusi1227
 
 echo $SLURMD_NODENAME > /scratch/s7550245/Dr.-L.-Bird/host-$SLURM_JOB_ID
 rm /scratch/s7550245/chromium/SingletonLock

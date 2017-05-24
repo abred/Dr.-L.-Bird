@@ -192,14 +192,28 @@ class DrLBird(Driver):
                         action = np.array([[np.random.rand(),
                                             np.random.rand(),
                                             np.random.rand()]])
-                        a_scaled = action * np.array([[50.0, 9000.0, 4000.0]])
+                        # a_scaled = action * np.array([[-50.0, 50.0, 4000.0]])
+
+                        a_scaled = action * np.array([[70.0, 70.0, 4000.0]])
+                        a_scaled = a_scaled + np.array([[10.0, 10.0, 0.0]])
+
+                        # a_scaled = action * np.array([[160.0, 160.0, 4000.0]])
+                        # a_scaled = a_scaled + np.array([[-80.0, -80.0, 0.0]])
+
                         print("Step: {} Next action (e-greedy {}): {}".format(
                             ace,
                             self.epsilon,
                             a_scaled))
                     else:
                         action = self.policy.getActions(state)
-                        a_scaled = action * np.array([[50.0, 9000.0, 4000.0]])
+                        # a_scaled = action
+
+                        a_scaled = action * np.array([[70.0, 70.0, 4000.0]])
+                        a_scaled = a_scaled + np.array([[10.0, 10.0, 0.0]])
+
+                        # a_scaled = action * np.array([[160.0, 160.0, 4000.0]])
+                        # a_scaled = a_scaled + np.array([[-80.0, -80.0, 0.0]])
+
                         print("Step: {} Next action: {}".format(ace, a_scaled))
 
                         sess.run(increment_ac_sum_step_op)
@@ -221,7 +235,8 @@ class DrLBird(Driver):
                     score, terminal, newState = \
                         self.actionResponse(a_scaled[0], vgg=useVGG)
 
-                    print("Current score: {}".format(score))
+                    print("Time: {} Current score: {}".format(time.ctime(),
+                                                              score))
                     if score == -1:
                         reward = 0
                     elif score < oldScore:
@@ -262,16 +277,17 @@ class DrLBird(Driver):
                 # print('| Reward: {}, | Episode {}, | Qmax: {}'.
                 #       format(ep_reward, e,
                 #              ep_ave_max_q / float(step)))
-                print('| Reward: {}, | Episode {}'.
-                      format(ep_reward, e))
+                print('Time: {} | Reward: {}, | Episode {}'.
+                      format(time.ctime(), ep_reward, e))
 
                 if ((not evalu) and ((e+1) % 5)) == 0:
+                    print("Saving model... (Time: {})".format(time.ctime()))
                     save_path = self.saver.save(sess,
                                                 out_dir + "/model.ckpt",
                                                 global_step=self.global_step)
                     self.replay.dump(os.path.join(out_dir,
                                                   "replayBuffer.pickle"))
-                    print("Model saved in file: %s" % save_path)
+                    print("Model saved in file: {} (Time: {}), dumping buffer ...".format(save_path, time.ctime()))
                 sys.stdout.flush()
 
     def learn(self):

@@ -211,14 +211,14 @@ class Actor:
                 if not isTargetNN:
                     r, th, t = tf.split(net, 3, 1)
                     # r, th, t = tf.split(1, 3, net)
-                    r_o = 50.0 * tf.sigmoid(r)
-                    th_o = 9000.0 * tf.sigmoid(th)
-                    t_o = 4000.0 * tf.sigmoid(t)
+                    # r_o = -50.0 * tf.sigmoid(r)
+                    # th_o = 50.0 * tf.sigmoid(th)
+                    # t_o = 4000.0 * tf.sigmoid(t)
                     self.weight_summaries += [
-                        tf.summary.histogram('out' + '/radius_action', r_o),
-                        tf.summary.histogram('out' + '/theta_action', th_o),
-                        tf.summary.histogram('out' +
-                                             '/time_delay_action',t_o),
+                        # tf.summary.histogram('out' + '/radius_action', r_o),
+                        # tf.summary.histogram('out' + '/theta_action', th_o),
+                        # tf.summary.histogram('out' +
+                        #                      '/time_delay_action',t_o),
                         tf.summary.histogram('out' +
                                              '/radius_action_before_sig', r),
                         tf.summary.histogram('out' +
@@ -228,6 +228,7 @@ class Actor:
                     ]
                 print(net)
                 net = tf.sigmoid(net)
+                # net = tf.tanh(net)
 
         return self.images, net
 
@@ -310,15 +311,15 @@ class Actor:
                 # print(net)
                 r, th, t = tf.split(net, 3, 1)
                 # r, th, t = tf.split(1, 3, net)
-                r_o = 50.0 * tf.sigmoid(r)
-                th_o = 9000.0 * tf.sigmoid(th)
-                t_o = 4000.0 * tf.sigmoid(t)
+                # r_o = 50.0 * tf.sigmoid(r)
+                # th_o = 9000.0 * tf.sigmoid(th)
+                # t_o = 4000.0 * tf.sigmoid(t)
                 if not isTargetNN:
                     self.weight_summaries += [
-                        tf.summary.histogram('out' + '/radius_action', r_o),
-                        tf.summary.histogram('out' + '/theta_action', th_o),
-                        tf.summary.histogram('out' +
-                                             '/time_delay_action',t_o),
+                        # tf.summary.histogram('out' + '/radius_action', r_o),
+                        # tf.summary.histogram('out' + '/theta_action', th_o),
+                        # tf.summary.histogram('out' +
+                        #                      '/time_delay_action',t_o),
                         tf.summary.histogram('out' +
                                              '/radius_action_before_sig', r),
                         tf.summary.histogram('out' +
@@ -327,6 +328,7 @@ class Actor:
                                              '/time_delay_action_before_sig',t)
                     ]
                 net = tf.sigmoid(net)
+                # net = tf.tanh(net)
                 if not isTargetNN:
                     self.weight_summaries += [tf.summary.histogram('output', net)]
 
