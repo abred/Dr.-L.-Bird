@@ -324,12 +324,12 @@ class Driver:
 
     def act(self, action):
         mid = 2
-        p1 = [0.0, -50.0]
-        p2 = [-50.0, 0.0]
-        l1m = -1.0 * np.tan(action[0]/180.0*np.pi)
-        l1n = -50.0 - l1m * 0.0
+        p1 = [0.0, 0.0]
+        p2 = [-50.0, -50.0]
+        l1m = 1.0 * np.tan(action[0]/180.0*np.pi)
+        l1n = p1[1] - l1m * p1[0]
         l2m = 1.0 * np.tan(action[1]/180.0*np.pi)
-        l2n = 0.0 - l2m * (-50.0)
+        l2n = p2[1] - l2m * p2[0]
 
         ix = (l2n - l1n)/(l1m-l2m)
         iy = (l1m*l2n-l2m*l1n)/(l1m-l2m)

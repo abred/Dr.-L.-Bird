@@ -197,8 +197,8 @@ class DrLBird(Driver):
                         # a_scaled = action * np.array([[70.0, 70.0, 4000.0]])
                         # a_scaled = a_scaled + np.array([[10.0, 10.0, 0.0]])
 
-                        a_scaled = action * np.array([[160.0, 160.0, 4000.0]])
-                        a_scaled = a_scaled + np.array([[-80.0, -80.0, 0.0]])
+                        a_scaled = action * np.array([[160.0, 90.0, 4000.0]])
+                        a_scaled = a_scaled + np.array([[-80.0, 0.0, 0.0]])
 
                         print("Step: {} Next action (e-greedy {}): {}".format(
                             ace,
