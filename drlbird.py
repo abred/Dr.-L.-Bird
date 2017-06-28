@@ -197,9 +197,9 @@ class DrLBird(Driver):
                         # a_scaled = action * np.array([[70.0, 70.0, 4000.0]])
                         # a_scaled = a_scaled + np.array([[10.0, 10.0, 0.0]])
 
-                        a_scaled = action * np.array([[160.0, 90.0, 4000.0]])
-                        a_scaled = a_scaled + np.array([[-80.0, 0.0, 0.0]])
-
+                        # a_scaled = action * np.array([[160.0, 90.0, 4000.0]])
+                        # a_scaled = a_scaled + np.array([[-80.0, 0.0, 0.0]])
+                        a_scaled = action * np.array([[-100.0, 100.0, 6000.0]])
                         print("Step: {} Next action (e-greedy {}): {}".format(
                             ace,
                             self.epsilon,
@@ -211,9 +211,10 @@ class DrLBird(Driver):
                         # a_scaled = action * np.array([[70.0, 70.0, 4000.0]])
                         # a_scaled = a_scaled + np.array([[10.0, 10.0, 0.0]])
 
-                        a_scaled = action * np.array([[160.0, 160.0, 4000.0]])
-                        a_scaled = a_scaled + np.array([[-80.0, -80.0, 0.0]])
-
+                        # a_scaled = action * np.array([[160.0, 160.0,4000.0]])
+                        # a_scaled = a_scaled + np.array([[-80.0, -80.0, 0.0]])
+                        # a_scaled = action * np.array([[-100.0, 100.0, 6000.0]])
+                        a_scaled = action
                         print("Step: {} Next action: {}".format(ace, a_scaled))
 
                         sess.run(increment_ac_sum_step_op)

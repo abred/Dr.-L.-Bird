@@ -324,33 +324,19 @@ class Driver:
 
     def act(self, action):
         mid = 2
-        p1 = [0.0, 0.0]
-        p2 = [-50.0, -50.0]
-        l1m = 1.0 * np.tan(action[0]/180.0*np.pi)
-        l1n = p1[1] - l1m * p1[0]
-        l2m = 1.0 * np.tan(action[1]/180.0*np.pi)
-        l2n = p2[1] - l2m * p2[0]
-
-        ix = (l2n - l1n)/(l1m-l2m)
-        iy = (l1m*l2n-l2m*l1n)/(l1m-l2m)
-
-        d = np.sqrt(ix * ix + iy * iy)
-        print(ix, iy)
-        if d > 50.0:
-            ix = ix / d * 50.0
-            iy = iy / d * 50.0
-        print(ix, iy)
         fx = self.currCenterX
         fy = self.currCenterY
-        # dx = action[0]
-        dx = ix
-        # dx = 24.8
-        # dy = action[1]
-        dy = -iy
-        # dy = 5510.0
+        if action[0] < -50:
+            dx = -100 - action[0]
+        else:
+            dx = action[0]
+        if action[1] > 50:
+            dy = 100 - action[1]
+        else:
+            dy = action[1]
         t1 = 0
         t2 = action[2]
-        print(action, ix, iy)
+        print(action, dx, dy)
 
         self.shoot(mid, fx, fy, dx, dy, t1, t2)
 

@@ -362,12 +362,12 @@ class Critic:
             in1 = tf.Print(self.td_targets_pl, [self.td_targets_pl], "targets ", first_n=15, summarize=100)
             in2 = tf.Print(self.nn, [self.nn], "nn ", first_n=15, summarize=100)
             self.delta = in1 - in2
-            lossL2 = slim.losses.mean_squared_error(in1, in2)
+            # lossL2 = slim.losses.mean_squared_error(in1, in2)
             # lossL2 = tfu.mean_squared_diff(self.td_targets_pl, self.nn)
             # Huber loss
-            # lossL2 = tf.where(tf.abs(self.delta) < 1.0,
-            #                   0.5 * tf.square(self.delta),
-            #                   tf.abs(self.delta) - 0.5, name='clipped_error')
+            lossL2 = tf.where(tf.abs(self.delta) < 1.0,
+                              0.5 * tf.square(self.delta),
+                              tf.abs(self.delta) - 0.5, name='clipped_error')
             # lossL2 = tf.select(tf.abs(self.delta) < 1.0,
             #                    0.5 * tf.square(self.delta),
             #                    tf.abs(self.delta) - 0.5, name='clipped_error')
