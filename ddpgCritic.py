@@ -141,20 +141,28 @@ class Critic:
 
         if self.useVGG:
             defNN = self.defineNNVGG
+            self.input_pl = self.images
         else:
             defNN = self.defineNN
+            self.input_pl = tf.placeholder(
+                tf.float32,
+                shape=[None,
+                       self.state_dim_y,
+                       self.state_dim_x,
+                       self.col_channels],
+                name='input')
 
         self.actions_pl = tf.placeholder(tf.float32,
                                          shape=[None, self.actions_dim],
                                          name='ActorActions')
 
-        self.input_pl, self.nn = defNN()
+        self.nn = defNN()
         self.nn_params = tf.trainable_variables()[prevTrainVarCount:]
 
         # Target Network
         with tf.variable_scope('target'):
             prevTrainVarCount = len(tf.trainable_variables())
-            self.target_input_pl,  self.target_nn =\
+            self.target_nn =\
                 defNN(isTargetNN=True)
             self.target_nn_params = \
                 tf.trainable_variables()[prevTrainVarCount:]
@@ -169,10 +177,6 @@ class Critic:
         with tf.variable_scope('inf'):
             print("defining vgg net")
             net = self.pretrained
-
-            actions = tf.placeholder(tf.float32,
-                                     shape=[None, self.actions_dim],
-                                     name='ActorActions')
 
             with slim.arg_scope(
                 [slim.fully_connected],
@@ -225,7 +229,7 @@ class Critic:
                 net = tf.concat(
                     [tf.reshape(net, [-1, remSzX*remSzY*H],
                                 name='flatten'),
-                     actions], 1)
+                     self.actions_pl], 1)
                 # net = tf.concat(1,
                 #     [tf.reshape(net, [-1, remSzX*remSzY*H],
                 #                 name='flatten'),
@@ -248,17 +252,10 @@ class Critic:
                     self.weight_summaries += [tf.summary.histogram('outputCr', net)]
 
                 print(net)
-        return self.images, actions, net
+        return net
 
     def defineNN(self, isTargetNN=False):
         with tf.variable_scope('inf'):
-            images = tf.placeholder(
-                tf.float32,
-                shape=[None,
-                       self.state_dim_y,
-                       self.state_dim_x,
-                       self.col_channels],
-                name='input')
             # actions = tf.placeholder(tf.float32,
             #                          shape=[None, self.actions_dim],
             #                          name='ActorActions')
@@ -338,7 +335,7 @@ class Critic:
                 if not isTargetNN:
                     self.weight_summaries += [tf.summary.histogram('output', net)]
 
-        return images,  net
+        return net
 
     def define_update_target_nn_op(self):
         with tf.variable_scope('update'):
@@ -359,7 +356,7 @@ class Critic:
         with tf.variable_scope('loss2'):
             self.td_targets_pl = tf.placeholder(tf.float32, [None, 1],
                                              name='tdTargets')
-            in1 = tf.Print(self.td_targets_pl, [self.td_targets_pl], "targets ", first_n=15, summarize=100)
+            in1 = tf.Print(self.td_targets_pl, [self.td_targets_pl], "targets ", first_n=15, summarize=10)
             in2 = tf.Print(self.nn, [self.nn], "nn ", first_n=15, summarize=100)
             self.delta = in1 - in2
             # lossL2 = slim.losses.mean_squared_error(in1, in2)
@@ -430,7 +427,7 @@ class Critic:
             print(self.nn)
             print(self.testw)
             if self.batchnorm is None:
-                nn = tf.Print(self.nn, [self.nn],"getactiongradsOut", first_n=10, summarize=100000)
+                nn = tf.Print(self.nn, [self.nn],"getactiongradsOut", first_n=10, summarize=10)
             else:
                 nn = tf.Print(self.nn, [self.fc0bnb,
                                     self.fc0bng,
@@ -440,7 +437,7 @@ class Critic:
                                     self.fc1bng,
                                     self.fc1bnmm,
                                     self.fc1bnmv,
-                                    self.nn], "getactiongradsOut", first_n=10, summarize=100000)
+                                    self.nn], "getactiongradsOut", first_n=10, summarize=10)
             ac = tf.Print(self.testw, [self.testw], "getactiongradAct", first_n=10)
             gd = tf.gradients(nn, self.actions_pl)
             # print(tf.trainable_variables())
@@ -521,7 +518,7 @@ class Critic:
 
     def run_predict_target(self, inputs, action):
         return self.sess.run(self.target_nn, feed_dict={
-            self.target_input_pl: inputs,
+            self.input_pl: inputs,
             self.actions_pl: action,
             self.isTraining: False,
             self.keep_prob: 1.0

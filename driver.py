@@ -1,5 +1,6 @@
 from keras.applications.vgg16 import preprocess_input
 
+import sys
 import ctypes
 import math
 import time
@@ -15,13 +16,18 @@ from encoder import *
 import numpy as np
 import scipy.ndimage
 
+def printT(s):
+    sys.stdout.write(s + '\n')
+
 class Driver:
-    def __init__(self, soc):
+    def __init__(self, soc, tid):
         self.enc = Encoder(soc)
         self.dec = Decoder(soc)
         self.birdCnt = 0
         self.data = np.zeros((480 * 840), dtype=np.int32)
         self.cnt = 0
+        self.tid = tid
+        self.wrapper = Wrapper()
 
         self.birdsPerLevel = [
             3, # 1
@@ -54,9 +60,9 @@ class Driver:
         self.enc.configure(id)
         temp = self.dec.configure()
         if p:
-            print("Current round: {}".format(temp[0]))
-            print("Time limit: {}".format(temp[1]))
-            print("Number of levels: {}".format(temp[2]))
+            printT("Agent {}: Current round: {}".format(self.tid, temp[0]))
+            printT("Agent {}: Time limit: {}".format(self.tid, temp[1]))
+            printT("Agent {}: Number of levels: {}".format(self.tid, temp[2]))
         return temp
 
     """
@@ -82,7 +88,7 @@ class Driver:
             "playing",
             "won",
             "lost"]
-        print("Current state: {}".format(stateMap[state]))
+        printT("Agent {}: Current state: {}".format(self.tid, stateMap[state]))
         return state
 
     def getBestScores(self):
@@ -92,17 +98,18 @@ class Driver:
     def getCurrScore(self):
         self.fillObs()
         data = np.zeros((self.height * self.width), dtype=np.int32)
-        lib.processScreenShot(ctypes.c_void_p(self.data.ctypes.data),
-                              ctypes.c_void_p(data.ctypes.data),
-                              ctypes.c_int(self.width),
-                              ctypes.c_int(self.height))
+        self.wrapper.processScreenShot(ctypes.c_void_p(self.data.ctypes.data),
+                                       ctypes.c_void_p(data.ctypes.data),
+                                       ctypes.c_int(self.width),
+                                       ctypes.c_int(self.height))
 
         dataTemp = np.zeros((32, 200), dtype=np.int32)
-        score = lib.getCurrScore(ctypes.c_void_p(data.ctypes.data),
-                                 ctypes.c_void_p(dataTemp.ctypes.data),
-                                 ctypes.c_int(self.width),
-                                 ctypes.c_int(self.height))
-        print("Current Score: {}".format(score))
+        score = self.wrapper.getCurrScore(
+            ctypes.c_void_p(data.ctypes.data),
+            ctypes.c_void_p(dataTemp.ctypes.data),
+            ctypes.c_int(self.width),
+            ctypes.c_int(self.height))
+        printT("Agent {}: Current Score: {}".format(self.tid, score))
         # dataTemp = dataTemp * 10000
         # im = Image.fromarray(dataTemp, mode='I')
         # print("Shape: {}".format(im.size))
@@ -113,11 +120,12 @@ class Driver:
     def getEndScore(self):
         w, h, rawInput = self.takeScreenshot()
         dataTemp = np.zeros((32, 100), dtype=np.int32)
-        score = lib.getEndScore(rawInput,#ctypes.c_void_p(rawInput.data),
-                                # ctypes.c_void_p(dataTemp.ctypes.data),
-                                ctypes.c_int(self.width),
-                                ctypes.c_int(self.height),
-                                ctypes.c_int(110))
+        score = self.wrapper.getEndScore(
+            rawInput,#ctypes.c_void_p(rawInput.data),
+            # ctypes.c_void_p(dataTemp.ctypes.data),
+            ctypes.c_int(self.width),
+            ctypes.c_int(self.height),
+            ctypes.c_int(110))
         # print("End Score: {}".format(score))
         # dataTemp = dataTemp * 100000
         # im = Image.fromarray(dataTemp, mode='I')
@@ -127,10 +135,10 @@ class Driver:
         if score < 0 or score > 100000:
             self.fillObs()
             dataTemp = np.zeros((32, 200), dtype=np.int32)
-            score = lib.getEndScore(rawInput,
-                                    ctypes.c_int(self.width),
-                                    ctypes.c_int(self.height),
-                                    ctypes.c_int(100))
+            score = self.wrapper.getEndScore(rawInput,
+                                              ctypes.c_int(self.width),
+                                              ctypes.c_int(self.height),
+                                              ctypes.c_int(100))
 
         if score < 0:
             score = 0
@@ -211,8 +219,8 @@ class Driver:
         return self.dec.restartLevel()
 
     def loadRandLevel(self):
-        lvl = np.random.randint(1,22)
-        print("loading level {}".format(lvl))
+        lvl = np.random.randint(1,21)
+        printT("Agent {}: loading level {}".format(self.tid, lvl))
         self.loadLevel(lvl)
         self.zoomOut()
         self.getStatePrint()
@@ -258,7 +266,7 @@ class Driver:
                              self.dataNN.shape[0],
                              self.dataNN.shape[1],
                              self.dataNN.shape[2])
-        print(self.dataNN.shape)
+        # printT(str(self.dataNN.shape))
         if store is not None:
             tmp = np.copy(self.dataNN)
             tmp *= 256.0
@@ -276,18 +284,19 @@ class Driver:
         self.fillObs()
         data = np.zeros((self.height * self.width), dtype=np.int32)
 
-        lib.processScreenShot(ctypes.c_void_p(self.data.ctypes.data),
-                              ctypes.c_void_p(data.ctypes.data),
-                              ctypes.c_int(self.width),
-                              ctypes.c_int(self.height))
+        self.wrapper.processScreenShot(ctypes.c_void_p(self.data.ctypes.data),
+                                       ctypes.c_void_p(data.ctypes.data),
+                                       ctypes.c_int(self.width),
+                                       ctypes.c_int(self.height))
 
         linPos = \
-            lib.findSlingshotCenter(ctypes.c_void_p(data.ctypes.data),
-                                    self.width, self.height)
+            self.wrapper.findSlingshotCenter(ctypes.c_void_p(data.ctypes.data),
+                                             self.width, self.height)
         self.currCenterX = linPos % self.width
         self.currCenterY = math.floor(linPos/self.width)
-        # print("Current slingshot position: {}, {}".format(self.currCenterX,
-        #                                                   self.currCenterY))
+        # printT("Agent {}: Current slingshot position: {}, {}".format(
+        #     self.tid, self.currCenterX,
+        #     self.currCenterY))
 
 
 
@@ -297,13 +306,14 @@ class Driver:
             self.fillObs()
             data = np.zeros((self.height * self.width), dtype=np.int32)
 
-            lib.processScreenShot(ctypes.c_void_p(self.data.ctypes.data),
-                                  ctypes.c_void_p(data.ctypes.data),
-                                  ctypes.c_int(self.width),
-                                  ctypes.c_int(self.height))
+            self.wrapper.processScreenShot(
+                ctypes.c_void_p(self.data.ctypes.data),
+                ctypes.c_void_p(data.ctypes.data),
+                ctypes.c_int(self.width),
+                ctypes.c_int(self.height))
 
             self.zoomOut()
-            return lib.calcLives()
+            return self.wrapper.calcLives()
         else:
             return self.birdsPerLevel[currLvl-1]
 
@@ -323,22 +333,34 @@ class Driver:
         self.shoot(mid, fx, fy, dx, dy, t1, t2)
 
     def act(self, action):
-        mid = 2
+        mid = 4
         fx = self.currCenterX
         fy = self.currCenterY
-        if action[0] < -50:
-            dx = -100 - action[0]
-        else:
-            dx = action[0]
-        if action[1] > 50:
-            dy = 100 - action[1]
-        else:
-            dy = action[1]
+        dx = action[0]
+        dy = action[1]
         t1 = 0
         t2 = action[2]
-        print(action, dx, dy)
+        printT("Agent {}: ({}, {}, {})".format(self.tid, action, dx, dy))
 
         self.shoot(mid, fx, fy, dx, dy, t1, t2)
+
+    # def act(self, action):
+    #     mid = 2
+    #     fx = self.currCenterX
+    #     fy = self.currCenterY
+    #     if action[0] < -50:
+    #         dx = -100 - action[0]
+    #     else:
+    #         dx = action[0]
+    #     if action[1] > 50:
+    #         dy = 100 - action[1]
+    #     else:
+    #         dy = action[1]
+    #     t1 = 0
+    #     t2 = action[2]
+    #     print(action, dx, dy)
+
+    #     self.shoot(mid, fx, fy, dx, dy, t1, t2)
 
     def actionResponse(self, action, vgg=False):
         # score = self.getCurrScore()
@@ -364,11 +386,11 @@ class Driver:
         elif gameState == 6:  # won
             score = self.getEndScore()
             terminal = True
-            print("WON")
+            printT("Agent {}: WON".format(self.tid))
         elif gameState == 7:  # lost
             score = -1
             terminal = True
-            print("LOST")
+            print("Agent {}: LOST".format(self.tid))
         else:
             raise Exception("should not get here")
 

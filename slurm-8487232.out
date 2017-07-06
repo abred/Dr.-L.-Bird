@@ -1,0 +1,175 @@
++ echo taurusi1193
++ rm /scratch/s7550245/chromiums/chromium/SingletonLock
+rm: cannot remove `/scratch/s7550245/chromiums/chromium/SingletonLock': No such file or directory
++ cp -r '/home/s7550245/Application Cache' /scratch/s7550245/chromiums/chromium/Default
++ cd /home/s7550245/abV1.32/plugin
++ export DISPLAY=:1
++ DISPLAY=:1
++ portS=4004
++ portC=2006
++ cp -r /home/s7550245/abV1.32/plugin /scratch/s7550245/chromiums/chromium
++ Xvfb :1 -screen 0 1024x768x16
+_XSERVTransmkdir: ERROR: euid != 0,directory /tmp/.X11-unix will not be created.
++ sed -i s/localhost:9000/localhost:4004/g /scratch/s7550245/chromiums/chromium/plugin/script.js
++ /sw/global/tools/java/jdk1.8.0_66/bin/java -jar /home/s7550245/Dr.-L.-Bird2/ABServer.jar -s 4004 -c 2006
++ ../../AppDir51/bin/ld-linux-x86-64.so.2 --library-path ../../AppDir51/bin ../../AppDir51/bin/chrome --disable-setuid-sandbox --single-process --disable-gpu --load-extension=/scratch/s7550245/chromiums/chromium/plugin --always-authorize-plugins --disable-infobars --disable-session-crashed-bubble --user-data-dir=/scratch/s7550245/chromiums/chromium http://chrome.angrybirds.com
+
+AB Server waiting for connection
+The Chrome Server started on port: 4004
+Round_Info: 1
+ waiting for agent  
+[100150:100150:0628/163045:ERROR:browser_main_loop.cc(219)] Running without the SUID sandbox! See https://chromium.googlesource.com/chromium/src/+/master/docs/linux_suid_sandbox_development.md for more information on developing with the sandbox on.
+--type=zygote: error while loading shared libraries: --type=zygote: cannot open shared object file
+Xlib:  extension "RANDR" missing on display ":1".
+Fontconfig warning: "/etc/fonts/conf.d/30-metric-aliases.conf", line 84: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/30-metric-aliases.conf", line 84: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/30-metric-aliases.conf", line 93: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/30-metric-aliases.conf", line 93: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/30-metric-aliases.conf", line 102: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/30-metric-aliases.conf", line 102: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 33: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 33: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 33: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 33: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 33: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 33: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 33: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 33: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 33: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 33: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 33: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 33: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 33: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 33: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 33: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 33: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 33: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 33: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 59: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 59: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 59: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 59: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 59: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 59: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 59: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 59: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 59: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 59: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 59: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 59: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 59: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 59: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 59: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 59: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 59: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 59: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 59: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 68: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 68: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 79: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 79: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 79: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/40-nonlatin.conf", line 88: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 23: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 23: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 23: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 23: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 23: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 23: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 23: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 23: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 39: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 39: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 39: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 39: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 39: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 39: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 39: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 39: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 39: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 56: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 56: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 56: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 56: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 56: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 56: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 56: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 56: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 56: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 56: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 66: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 66: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 66: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 75: Having multiple <family> in <alias> isn't supported and may not work as expected
+Fontconfig warning: "/etc/fonts/conf.d/45-latin.conf", line 75: Having multiple <family> in <alias> isn't supported and may not work as expected
+Unable to update the static FcBlanks: 0x0600
+Unable to update the static FcBlanks: 0x0601
+Unable to update the static FcBlanks: 0x0602
+Unable to update the static FcBlanks: 0x0603
+Unable to update the static FcBlanks: 0x06dd
+Unable to update the static FcBlanks: 0x070f
+Unable to update the static FcBlanks: 0x2028
+Unable to update the static FcBlanks: 0x2029
+Unable to update the static FcBlanks: 0xfff9
+Unable to update the static FcBlanks: 0xfffa
+Unable to update the static FcBlanks: 0xfffb
+[100150:100212:0628/163045:ERROR:bus.cc(432)] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
+Xlib:  extension "RANDR" missing on display ":1".
+[100150:100223:0628/163046:ERROR:proxy_service_factory.cc(130)] Cannot use V8 Proxy resolver in single process mode.
+[100150:100223:0628/163046:ERROR:proxy_service_factory.cc(130)] Cannot use V8 Proxy resolver in single process mode.
+libpng warning: iCCP: known incorrect sRGB profile
+ALSA lib confmisc.c:768:(parse_card) cannot find card '0'
+ALSA lib conf.c:4292:(_snd_config_evaluate) function snd_func_card_driver returned error: No such file or directory
+ALSA lib confmisc.c:392:(snd_func_concat) error evaluating strings
+ALSA lib conf.c:4292:(_snd_config_evaluate) function snd_func_concat returned error: No such file or directory
+ALSA lib confmisc.c:1251:(snd_func_refer) error evaluating name
+ALSA lib conf.c:4292:(_snd_config_evaluate) function snd_func_refer returned error: No such file or directory
+ALSA lib conf.c:4771:(snd_config_expand) Evaluate error: No such file or directory
+ALSA lib pcm.c:2266:(snd_pcm_open_noupdate) Unknown PCM default
+ALSA lib confmisc.c:768:(parse_card) cannot find card '0'
+ALSA lib conf.c:4292:(_snd_config_evaluate) function snd_func_card_driver returned error: No such file or directory
+ALSA lib confmisc.c:392:(snd_func_concat) error evaluating strings
+ALSA lib conf.c:4292:(_snd_config_evaluate) function snd_func_concat returned error: No such file or directory
+ALSA lib confmisc.c:1251:(snd_func_refer) error evaluating name
+ALSA lib conf.c:4292:(_snd_config_evaluate) function snd_func_refer returned error: No such file or directory
+ALSA lib conf.c:4771:(snd_config_expand) Evaluate error: No such file or directory
+ALSA lib pcm.c:2266:(snd_pcm_open_noupdate) Unknown PCM default
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+ A Chrome Window is connected to the agent proxy
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+[100150:100223:0628/163054:ERROR:ssl_client_socket_openssl.cc(1132)] handshake failed; returned -1, SSL error code 1, net_error -100
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+slurmstepd: error: *** JOB 8487232 ON taurusi1193 CANCELLED AT 2017-06-28T16:33:29 ***

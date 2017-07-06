@@ -1,29 +1,55 @@
-from ctypes import cdll
-lib = cdll.LoadLibrary('cffi/libbirdwrap.so')
+# from ctypes import *
+# from ctypes import cdll
+import ctypes
+lib = ctypes.cdll.LoadLibrary('cffi/libbirdwrap.so')
 
 
-def calcLives():
-    return lib.calcLives()
+lib.Wrapper_new.argtypes = []
+lib.Wrapper_new.restype = ctypes.c_void_p
+
+lib.Wrapper_processScreenShot.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+lib.Wrapper_processScreenShot.restype = None
+
+lib.Wrapper_preprocessDataForNN.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+lib.Wrapper_preprocessDataForNN.restype = None
+
+lib.Wrapper_findSlingshotCenter.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+lib.Wrapper_findSlingshotCenter.restype = ctypes.c_int
+
+lib.Wrapper_calcLives.argtypes = [ctypes.c_void_p]
+lib.Wrapper_calcLives.restype = ctypes.c_int
+
+lib.Wrapper_getCurrScore.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+lib.Wrapper_getCurrScore.restype = ctypes.c_int
+
+lib.Wrapper_getEndScore.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+lib.Wrapper_getEndScore.restype = ctypes.c_int
 
 
-def processScreenShot(input, output, w, h):
-    return lib.processScreenShot(input, output, w, h)
+class Wrapper(object):
+    def __init__(self):
+        print("new wrapper")
+        self.obj = lib.Wrapper_new()
+        print(self.obj)
 
+    def calcLives(self):
+        return lib.Wrapper_calcLives(self.obj)
 
-def findSlingshotCenter(scene, width, height):
-    return lib.findSlingshotCenter(scene, width, height)
+    def processScreenShot(self, input, output, w, h):
+        lib.Wrapper_processScreenShot(self.obj, input, output, w, h)
 
+    def findSlingshotCenter(self, scene, width, height):
+        return lib.Wrapper_findSlingshotCenter(self.obj, scene, width, height)
 
-def getCurrScore(input, output, w, h):
-    return lib.getCurrScore(input, output, w, h)
+    def getCurrScore(self, input, output, w, h):
+        return lib.Wrapper_getCurrScore(self.obj, input, output, w, h)
 
+    def getEndScore(self, input, w, h, threshold):
+        return lib.Wrapper_getEndScore(self.obj,
+                                       input, w, h, threshold)
 
-def getEndScore(input, output, w, h, threshold):
-    return lib.getEndScore(input, output, w, h, threshold)
-
-
-def preprocessDataForNN(input, output, w, h):
-    return lib.preprocessDataForNN(input, output, w, h)
+    def preprocessDataForNN(self,input, output, w, h):
+        lib.Wrapper_preprocessDataForNN(self.obj, input, output, w, h)
 
 
 

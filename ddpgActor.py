@@ -327,7 +327,7 @@ class Actor:
                         tf.summary.histogram('out' +
                                              '/time_delay_action_before_sig',t)
                     ]
-                # net = tf.sigmoid(net)
+                net = tf.sigmoid(net)
                 # net = tf.tanh(net)
                 if not isTargetNN:
                     self.weight_summaries += [tf.summary.histogram('output', net)]

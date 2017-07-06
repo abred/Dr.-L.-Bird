@@ -89,6 +89,10 @@ if params['async']:
 if params['importanceSampling']:
     out_dir += "_" + "impSmpl"
 
+print("mc", params['mc'])
+if params['mc']:
+    out_dir += "_" + "mc"
+
 print("level", params['loadLevel'])
 if params['loadLevel']:
     out_dir += "_lvl" + str(params['loadLevel'])
@@ -96,19 +100,21 @@ else:
     out_dir += "_lvlRand"
 
 print(params['host'])
-soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-soc.connect((params['host'], 2004))
-d = DrLBird(soc)
-print("test1")
-d.configure(421337, True)
-print("test2")
-d.getStatePrint()
-print("test3")
+
+time.sleep(60)
+# soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+# soc.connect((params['host'], 2004))
+d = DrLBird(params)
+# print("test1")
+# d.configure(421337, True)
+# print("test2")
+# d.getStatePrint()
+# print("test3")
 # TEST
 
 algo = 0
 if algo == 0:
-    d.DDPG(params, out_dir)
+    d.DDPG(out_dir)
 elif algo == 3:
     d.DSPG()
 elif algo == 1:
