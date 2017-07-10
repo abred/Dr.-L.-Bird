@@ -43,7 +43,7 @@ class ReplayBuffer(object):
         random.seed(random_seed)
 
     def add(self, s, a, r, t, s2):
-        experience = (s, a, r, t, s2)
+        experience = (s, a, r, t, s2, l)
         if self.count < self.buffer_size:
             self.buffer.append(experience)
             self.count += 1
@@ -64,11 +64,16 @@ class ReplayBuffer(object):
 
         s_batch = np.squeeze(np.array([_[0] for _ in batch]))
         a_batch = np.squeeze(np.array([_[1] for _ in batch]))
-        r_batch = np.reshape(np.array([_[2] for _ in batch]), (batch_size, 1))
-        t_batch = np.reshape(np.array([_[3] for _ in batch]), (batch_size, 1))
-        s2_batch = np.squeeze(np.array([_[4] for _ in batch]))
+        # r_batch = np.reshape(np.array([_[2] for _ in batch]), (batch_size, 1))
+        # t_batch = np.reshape(np.array([_[3] for _ in batch]), (batch_size, 1))
+        r_batch = np.squezze(np.array([_[2] for _ in batch]))
+        t_batch = np.squezze(np.array([_[3] for _ in batch]))
 
-        return s_batch, a_batch, r_batch, t_batch, s2_batch
+        s2_batch = np.squeeze(np.array([_[4] for _ in batch]))
+        l_batch = np.reshape(np.array([_[5] for _ in batch]), (batch_size, 1))
+
+        print(s_batch.shape, a_batch.shape, r_batch.shape, t_batch.shape, s2_batch.shape, l_batch.shape)
+        return s_batch, a_batch, r_batch, t_batch, s2_batch, l_batch
 
     def clear(self):
         self.deque.clear()

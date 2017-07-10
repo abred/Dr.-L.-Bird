@@ -49,6 +49,7 @@ class Critic:
         self.opti = params['optimizerCritic']
         self.bnDecay = params['batchnorm-decay']
         self.useVGG = params['useVGG']
+        self.miniBatchSize = params['miniBatchSize']
 
         if params['state_dim'] is not None:
             self.state_dim = params['state_dim']
@@ -129,7 +130,7 @@ class Critic:
 
                 self.weight_summaries += s
 
-        self.action_grads = self.define_action_grad()
+        # self.action_grads = self.define_action_grad()
         self.grads = self.define_grads()
 
         self.summary_op = tf.summary.merge(self.summaries)
@@ -146,14 +147,17 @@ class Critic:
             defNN = self.defineNN
             self.input_pl = tf.placeholder(
                 tf.float32,
-                shape=[None,
+                shape=[self.miniBatchSize,
+                       None,
                        self.state_dim_y,
                        self.state_dim_x,
                        self.col_channels],
                 name='input')
 
         self.actions_pl = tf.placeholder(tf.float32,
-                                         shape=[None, self.actions_dim],
+                                         shape=[self.miniBatchSize,
+                                                None,
+                                                self.actions_dim],
                                          name='ActorActions')
 
         self.nn = defNN()
@@ -227,7 +231,9 @@ class Critic:
                 print(remSzY, remSzX, net, H)
 
                 net = tf.concat(
-                    [tf.reshape(net, [-1, remSzX*remSzY*H],
+                    [tf.reshape(net, [self.miniBatchSize,
+                                      -1,
+                                      remSzX*remSzY*H],
                                 name='flatten'),
                      self.actions_pl], 1)
                 # net = tf.concat(1,
@@ -261,6 +267,11 @@ class Critic:
             #                          name='ActorActions')
 
             net = self.input_pl
+            net = tf.reshape(net, [-1,
+                                   self.state_dim_y,
+                                   self.state_dim_x,
+                                   self.col_channels],
+                             name='rnn_input_flatten')
             with slim.arg_scope(
                 [slim.fully_connected, slim.conv2d],
                 activation_fn=tf.nn.relu,
@@ -296,12 +307,19 @@ class Critic:
 
                 remSzY = int(self.state_dim_y / 2**4)
                 remSzX = int(self.state_dim_x / 2**4)
-                net = tf.reshape(net, [-1, remSzX*remSzY*self.Hconv4],
+                net = tf.reshape(net, [self.miniBatchSize,
+                                       -1,
+                                       remSzX*remSzY*self.Hconv4],
                                  name='flatten')
+                act = self.actions_pl
+                act = tf.reshape(act, [self.miniBatchSize,
+                                       -1,
+                                       self.actions_dim],
+                                 name='rnn_input_flatten')
                 print(net)
                 net = tf.concat(
                     [net,
-                     self.actions_pl], 1)
+                     act], 2)
                 print(net)
                 self.net2 = net
                 # net = tf.concat(1,
@@ -317,15 +335,33 @@ class Critic:
                                         'updates_collections': None,
                                         'is_training': self.isTraining,
                                         'scale': True}):
-                    for i in range(len(self.HFC)):
-                        net = slim.fully_connected(net, self.HFC[i],
-                                                   scope='fc' + str(i))
-                        print(net)
-                        if self.dropout:
-                            net = slim.dropout(net,
-                                               keep_prob=self.dropout,
-                                               is_training=self.isTraining)
-                            print(net)
+                    self.seqlen = tf.placeholder(tf.int32,
+                                                 [self.miniBatchSize])
+                    cell = tf.contrib.rnn.LSTMCell(self.HFC[0])
+                    rnn_outputs, final_state = \
+                        tf.nn.dynamic_rnn(cell, net,
+                                          sequence_length=self.seqlen,
+                                          dtype=tf.float32)
+                    if self.dropout:
+                        rnn_outputs = slim.dropout(rnn_outputs,
+                                                   keep_prob=self.dropout,
+                                                   is_training=self.isTraining)
+                    last_rnn_output = \
+                        tf.gather_nd(rnn_outputs,
+                                     tf.stack([tf.range(self.miniBatchSize),
+                                               self.seqlen-1], axis=1))
+
+                    # for i in range(len(self.HFC)):
+                    #     net = slim.fully_connected(net, self.HFC[i],
+                    #                                scope='fc' + str(i))
+                    #     print(net)
+                    #     if self.dropout:
+                    #         net = slim.dropout(net,
+                    #                            keep_prob=self.dropout,
+                    #                            is_training=self.isTraining)
+                    #         print(net)
+
+                net = last_rnn_output
                 net = slim.fully_connected(net, 1, activation_fn=None,
                                            scope='out')
                 net = tf.Print(net, [net], "outputCritic:", summarize=1000,
@@ -354,7 +390,8 @@ class Critic:
 
     def define_loss(self):
         with tf.variable_scope('lossCritic'):
-            self.td_targets_pl = tf.placeholder(tf.float32, [None, 1],
+            self.td_targets_pl = tf.placeholder(tf.float32,
+                                                [self.miniBatchSize, 1],
                                              name='tdTargets')
             in1 = tf.Print(self.td_targets_pl, [self.td_targets_pl],
                            "targetsCritic ", first_n=15, summarize=10)
@@ -425,33 +462,33 @@ class Critic:
             # return optimizer.minimize(self.loss_op,
                                       # global_step=self.global_step)
 
-    def define_action_grad(self):
-        with tf.variable_scope('getActionGradient'):
-            print(self.nn)
-            print(self.testw)
-            if self.batchnorm is None:
-                nn = tf.Print(self.nn, [self.nn],"getactiongradsOut", first_n=10, summarize=10)
-            else:
-                nn = tf.Print(self.nn, [self.fc0bnb,
-                                    self.fc0bng,
-                                    self.fc0bnmm,
-                                    self.fc0bnmv,
-                                    self.fc1bnb,
-                                    self.fc1bng,
-                                    self.fc1bnmm,
-                                    self.fc1bnmv,
-                                    self.nn], "getactiongradsOut", first_n=10, summarize=10)
-            ac = tf.Print(self.testw, [self.testw], "getactiongradAct", first_n=10)
-            gd = tf.gradients(nn, self.actions_pl)
-            # print(tf.trainable_variables())
-            grads = []
-            for i in range(len(gd)):
-                print(gd[i])
-                grads.append(tf.Print(gd[i], [gd[i]], "actiongrads", first_n=10))
-                # print(nn, ac, gd[i])
-            return grads[0]
-            # return tf.Print(gd, [gd], "actiongrads", first_n=10)
-            # return tf.gradients(self.nn, self.actions_pl)[0]
+    # def define_action_grad(self):
+    #     with tf.variable_scope('getActionGradient'):
+    #         print(self.nn)
+    #         print(self.testw)
+    #         if self.batchnorm is None:
+    #             nn = tf.Print(self.nn, [self.nn],"getactiongradsOut", first_n=10, summarize=10)
+    #         else:
+    #             nn = tf.Print(self.nn, [self.fc0bnb,
+    #                                 self.fc0bng,
+    #                                 self.fc0bnmm,
+    #                                 self.fc0bnmv,
+    #                                 self.fc1bnb,
+    #                                 self.fc1bng,
+    #                                 self.fc1bnmm,
+    #                                 self.fc1bnmv,
+    #                                 self.nn], "getactiongradsOut", first_n=10, summarize=10)
+    #         ac = tf.Print(self.testw, [self.testw], "getactiongradAct", first_n=10)
+    #         gd = tf.gradients(nn, self.actions_pl)
+    #         # print(tf.trainable_variables())
+    #         grads = []
+    #         for i in range(len(gd)):
+    #             print(gd[i])
+    #             grads.append(tf.Print(gd[i], [gd[i]], "actiongrads", first_n=10))
+    #             # print(nn, ac, gd[i])
+    #         return grads[0]
+    #         # return tf.Print(gd, [gd], "actiongrads", first_n=10)
+    #         # return tf.gradients(self.nn, self.actions_pl)[0]
 
     def define_grads(self):
         with tf.variable_scope('getGrads'):
@@ -459,7 +496,7 @@ class Critic:
             return optimizer.compute_gradients(self.loss_op,
                                                var_list=self.nn_params)
 
-    def run_train(self, inputs, actions, targets):
+    def run_train(self, inputs, actions, targets, lens):
         step = self.sess.run(self.global_step)
         wSum = 300
         lSum = 20
@@ -475,7 +512,8 @@ class Critic:
                     self.actions_pl: actions,
                     self.td_targets_pl: targets,
                     self.isTraining: True,
-                    self.keep_prob: self.dropout
+                    self.keep_prob: self.dropout,
+                    self.seqlen: lens
                 })
             self.writer.add_summary(summaries, step)
             self.writer.flush()
@@ -491,7 +529,8 @@ class Critic:
                     self.actions_pl: actions,
                     self.td_targets_pl: targets,
                     self.isTraining: True,
-                    self.keep_prob: self.dropout
+                    self.keep_prob: self.dropout,
+                    self.seqlen: lens
                 })
             self.writer.add_summary(summaries, step)
             self.writer.flush()
@@ -506,7 +545,8 @@ class Critic:
                     self.actions_pl: actions,
                     self.td_targets_pl: targets,
                     self.isTraining: True,
-                    self.keep_prob: self.dropout
+                    self.keep_prob: self.dropout,
+                    self.seqlen: lens
                 })
         print("step: {}, loss: {}".format(step, loss))
         return step, out, delta
@@ -527,21 +567,21 @@ class Critic:
             self.keep_prob: 1.0
         })
 
-    def run_get_action_gradients2(self, inputs, actions):
-        return self.sess.run(self.action_grads, feed_dict={
-            self.input_pl: inputs,
-            self.actions_pl: actions,
-            self.isTraining: True,
-            self.keep_prob: 1.0
-        })
+    # def run_get_action_gradients2(self, inputs, actions):
+    #     return self.sess.run(self.action_grads, feed_dict={
+    #         self.input_pl: inputs,
+    #         self.actions_pl: actions,
+    #         self.isTraining: True,
+    #         self.keep_prob: 1.0
+    #     })
 
-    def run_get_action_gradients(self, inputs, actions):
-        return self.sess.run(self.action_grads, feed_dict={
-            self.input_pl: inputs,
-            self.actions_pl: actions,
-            self.isTraining: True,
-            self.keep_prob: 1.0
-        })
+    # def run_get_action_gradients(self, inputs, actions):
+    #     return self.sess.run(self.action_grads, feed_dict={
+    #         self.input_pl: inputs,
+    #         self.actions_pl: actions,
+    #         self.isTraining: True,
+    #         self.keep_prob: 1.0
+    #     })
 
     def run_get_gradients(self, inputs, actions, targets):
         return zip(self.nn_params, self.sess.run(self.grads, feed_dict={

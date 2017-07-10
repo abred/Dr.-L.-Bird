@@ -51,6 +51,7 @@ class Actor:
         self.bnDecay = params['batchnorm-decay']
         self.useVGG = params['useVGG']
         self.tau = params['tau']
+        self.miniBatchSize = params['miniBatchSize']
 
         if params['state_dim'] is not None:
             self.state_dim = params['state_dim']
@@ -237,7 +238,9 @@ class Actor:
 
                 remSzY = int(self.vgg_state_dim / 2**numPool)
                 remSzX = int(self.vgg_state_dim / 2**numPool)
-                net = tf.reshape(net, [-1, remSzY*remSzX*H],
+                net = tf.reshape(net, [self.miniBatchSize,
+                                       -1,
+                                       remSzY*remSzX*H],
                                  name='flatten')
                 net = net / 255.0
                 print(remSzY, remSzX, net, H)
@@ -288,13 +291,18 @@ class Actor:
         with tf.variable_scope('inf'):
             images = tf.placeholder(
                 tf.float32,
-                shape=[None,
+                shape=[self.miniBatchSize, None,
                        self.state_dim_y,
                        self.state_dim_x,
                        self.col_channels],
                 name='input')
 
             net = images
+            net = tf.reshape(net, [-1,
+                                   self.state_dim_y,
+                                   self.state_dim_x,
+                                   self.col_channels],
+                             name='rnn_input_flatten')
             net = tf.Print(net, [net], "input", first_n=2, summarize=10000)
             # net = (net - 127.0) / 255.0
             with slim.arg_scope(
@@ -333,7 +341,9 @@ class Actor:
 
                 remSzY = int(self.state_dim_y / 2**4)
                 remSzX = int(self.state_dim_x / 2**4)
-                net = tf.reshape(net, [-1, remSzY*remSzX*self.Hconv4],
+                net = tf.reshape(net, [self.miniBatchSize,
+                                       -1,
+                                       remSzY*remSzX*self.Hconv4],
                                  name='flatten')
 
                 with slim.arg_scope([slim.fully_connected],
@@ -344,19 +354,37 @@ class Actor:
                                         'updates_collections': None,
                                         'decay': self.bnDecay,
                                         'scale': True}):
-                    for i in range(len(self.HFC)):
-                        net = slim.fully_connected(net, self.HFC[i],
-                                                   scope='fc' + str(i))
-                        if not isTargetNN:
-                            self.weight_summaries += [tf.summary.histogram(
-                                'fc' + str(i),
-                                net)]
-                        print(net)
-                        if self.dropout:
-                            net = slim.dropout(net,
-                                               keep_prob=self.dropout,
-                                               is_training=self.isTraining)
-                            print(net)
+                    self.seqlen = tf.placeholder(tf.int32,
+                                                 [self.miniBatchSize])
+                    cell = tf.contrib.rnn.LSTMCell(self.HFC[0])
+                    rnn_outputs, final_state = \
+                        tf.nn.dynamic_rnn(cell, net,
+                                          sequence_length=self.seqlen,
+                                          dtype=tf.float32)
+                    if self.dropout:
+                        rnn_outputs = slim.dropout(rnn_outputs,
+                                                   keep_prob=self.dropout,
+                                                   is_training=self.isTraining)
+                    last_rnn_output = \
+                        tf.gather_nd(rnn_outputs,
+                                     tf.stack([tf.range(self.miniBatchSize),
+                                               self.seqlen-1], axis=1))
+
+                    # for i in range(len(self.HFC)):
+                    #     net = slim.fully_connected(net, self.HFC[i],
+                    #                                scope='fc' + str(i))
+                    #     if not isTargetNN:
+                    #         self.weight_summaries += [tf.summary.histogram(
+                    #             'fc' + str(i),
+                    #             net)]
+                    #     print(net)
+                    #     if self.dropout:
+                    #         net = slim.dropout(net,
+                    #                            keep_prob=self.dropout,
+                    #                            is_training=self.isTraining)
+                    #         print(net)
+
+                net = last_rnn_output
                 net = slim.fully_connected(net, self.actions_dim,
                                            activation_fn=None,
                                            scope='out')
@@ -515,7 +543,7 @@ class Actor:
         # return optimizer.apply_gradients(zip(self.actor_gradients,
         #                                      self.nn_params))
 
-    def run_train(self, inputs, delta, step):
+    def run_train(self, inputs, delta, step, lens):
         wSum = 300
         lSum = 20
         if (step+1) % wSum == 0:
@@ -525,7 +553,8 @@ class Actor:
                 self.input_pl: inputs,
                 self.delta_pl: delta,
                 self.isTraining: True,
-                self.keep_prob: self.dropout
+                self.keep_prob: self.dropout,
+                self.seqlen: lens
             })
             self.writer.add_summary(summaries, step)
             self.writer.flush()
@@ -536,7 +565,8 @@ class Actor:
                 self.input_pl: inputs,
                 self.delta_pl: delta,
                 self.isTraining: True,
-                self.keep_prob: self.dropout
+                self.keep_prob: self.dropout,
+                self.seqlen: lens
             })
             self.writer.add_summary(summaries, step)
             self.writer.flush()
@@ -546,21 +576,24 @@ class Actor:
                 self.input_pl: inputs,
                 self.delta_pl: delta,
                 self.isTraining: True,
-                self.keep_prob: self.dropout
+                self.keep_prob: self.dropout,
+                self.seqlen: lens
             })
 
     def run_predict(self, inputs):
         return self.sess.run(self.out, feed_dict={
             self.input_pl: inputs,
             self.isTraining: False,
-            self.keep_prob: 1.0
+            self.keep_prob: 1.0,
+            self.seqlen: [1]
         })
 
     def run_predict_target(self, inputs):
         return self.sess.run(self.target_out, feed_dict={
             self.target_input_pl: inputs,
             self.isTraining: False,
-            self.keep_prob: 1.0
+            self.keep_prob: 1.0,
+            self.seqlen: [1]
         })
 
     def run_update_target_nn(self):

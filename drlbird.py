@@ -384,7 +384,26 @@ class DrLBird:
                 printT("")
                 sys.stdout.flush()
 
-            if not self.evalu and self.params['mc']:
+            if self.params['rnn']:
+                states = []
+                actions = []
+                rewards = []
+                terminals = []
+                newStates = []
+                returnV = 0.0
+                returnVs = []
+                for samp in reversed(samples):
+                    states.append(samp[0])
+                    actions.append(samp[1])
+                    rewards.append(samp[2])
+                    terminals.append(samp[3])
+                    newStates.append(samp[4])
+                    returnV += reward
+                    returnVs.append(returnV)
+                with self.lock:
+                    self.replay.add(states, actions, returnVs,
+                                    terminals, newStates, len(states))
+            elif not self.evalu and self.params['mc']:
                 returnV = 0.0
                 for samp in reversed(samples):
                     state = samp[0]
@@ -450,14 +469,13 @@ class DrLBird:
                 print(ids)
             else:
                 with self.lock:
-                    s_batch, a_batch, r_batch, t_batch, ns_batch = \
+                    s_batch, a_batch, r_batch, t_batch, ns_batch, l_batch = \
                         self.replay.sample_batch(self.miniBatchSize)
 
-            y_batch = np.zeros((self.miniBatchSize, 1))
             if self.params['mc']:
-                for i in range(self.miniBatchSize):
-                    y_batch[i] = r_batch[i]
+                y_batch = r_batch
             else:
+                y_batch = np.zeros((self.miniBatchSize, 1))
                 qValsNewState = self.policy.predict_target_nn(ns_batch)
                 for i in range(self.miniBatchSize):
                     if t_batch[i]:
@@ -471,7 +489,8 @@ class DrLBird:
             #         with self.lock:
             #             self.replay.update(ids[i], abs(y_batch[i]))
 
-            gs, qs, delta = self.policy.update(s_batch, a_batch, y_batch)
+            gs, qs, delta = self.policy.update(s_batch, a_batch, y_batch,
+                                               l_batch)
             if self.params['prioritized']:
                 printT("Learning: trying to get lock for updating samples")
                 self.lock.acquire()

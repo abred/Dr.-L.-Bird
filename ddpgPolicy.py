@@ -10,6 +10,7 @@ from tensorflow.python.framework import ops
 
 class DDPGPolicy:
     def __init__(self, sess, out_dir, glStep, params):
+        self.params = params
         if params['useVGG']:
             self.loadVGG()
             self.actor = Actor(sess, out_dir, params,
@@ -28,8 +29,9 @@ class DDPGPolicy:
         a = self.actor.run_predict(state)
         return a
 
-    def update(self, states, actions, targets):
-        step, out, delta = self.critic.run_train(states, actions, targets)
+    def update(self, states, actions, targets, lens):
+        step, out, delta = self.critic.run_train(states, actions, targets,
+                                                 lens)
         # print("step: {}, loss: {}".format(step, loss))
         # ac = self.actor.run_predict(states)
         # a_grad = self.critic.run_get_action_gradients(states, ac)
@@ -51,7 +53,8 @@ class DDPGPolicy:
     def loadVGG(self):
         self.images = tf.placeholder(
             tf.float32,
-            shape=[None,
+            shape=[self.params['miniBatchSize'],
+                   None,
                    224,
                    224,
                    3],
