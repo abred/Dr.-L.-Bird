@@ -4,7 +4,7 @@
 #SBATCH -A p_argumentation
 #SBATCH -n 1
 #SBATCH -N 1
-#SBATCH --time 0-12:00:00
+#SBATCH --time 0-08:00:00
 ###SBATCH --time 0-01:00:00
 #SBATCH --mem 20G
 #SBATCH --mail-type=END,FAIL,TIME_LIMIT_90
@@ -49,10 +49,10 @@ PYTHONPATH=/home/s7550245/pyutil:/sw/taurus/libraries/tesseract/3.04/lib64/:/sw/
 		  --port "${port}" \
 		  --weight-decayCritic 0.0001 \
 		  --weight-decayActor 0.001 \
-		  --learning-rateCritic 0.00001 \
+		  --learning-rateCritic 0.0005 \
 		  --momentumCritic 0.9 \
 		  --optimizerCritic momentum \
-		  --learning-rateActor 0.00005 \
+		  --learning-rateActor 0.0001 \
 		  --momentumActor 0.9 \
 		  --optimizerActor momentum \
 		  --startLearning 200 \
@@ -61,7 +61,7 @@ PYTHONPATH=/home/s7550245/pyutil:/sw/taurus/libraries/tesseract/3.04/lib64/:/sw/
 		  --numEpochs 10000 \
 		  --annealSteps 2000 \
 		  --vgg \
-		  --xFirstVggLayers 10 \
+		  --xFirstVggLayers 13 \
 		  `#--prioritized `\
 		  `#--importanceSampling `\
 		  --async \

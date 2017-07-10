@@ -340,7 +340,7 @@ class Driver:
         dy = action[1]
         t1 = 0
         t2 = action[2]
-        printT("Agent {}: ({}, {}, {})".format(self.tid, action, dx, dy))
+        # printT("Agent {}: ({}, {}, {})".format(self.tid, action, dx, dy))
 
         self.shoot(mid, fx, fy, dx, dy, t1, t2)
 

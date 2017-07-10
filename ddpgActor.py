@@ -16,11 +16,11 @@ import tfUtils as tfu
 class Actor:
     # O = 3
 
-    Hconv1 = 32
-    Hconv2 = 64
-    Hconv3 = 128
-    Hconv4 = 256
-    HFC = [512, 512]
+    Hconv1 = 16
+    Hconv2 = 32
+    Hconv3 = 32
+    Hconv4 = 48
+    HFC = [96, 96]
     HFCVGG = [2048, 2048]
 
     tau = 0.001
@@ -28,14 +28,14 @@ class Actor:
     state_dim_x = 210
     state_dim_y = 120
     col_channels = 3
-    actions_dim = 3
+    actions_dim = 6
     vgg_state_dim = 224
 
     def __init__(self, sess, out_dir, params,
                  inputs=None):
         self.sess = sess
         self.params = params
-        # self.summaries = []
+        self.summaries = []
         self.weight_summaries = []
         if params['batchnorm']:
             self.batchnorm = slim.batch_norm
@@ -79,6 +79,7 @@ class Actor:
             # Actor Network
             self.setNN()
 
+            self.loss_op = self.defineLoss()
             self.train_op = self.defineTraining()
 
         _VARSTORE_KEY = ("__variable_store",)
@@ -106,7 +107,7 @@ class Actor:
 
                 self.weight_summaries += s
 
-        # self.summary_op = tf.summary.merge(self.summaries)
+        self.summary_op = tf.summary.merge(self.summaries)
         self.weight_summary_op = tf.summary.merge(self.weight_summaries)
         self.writer = tf.summary.FileWriter(out_dir, sess.graph)
 
@@ -120,6 +121,24 @@ class Actor:
 
         self.input_pl, self.nn = defNN()
         self.nn_params = tf.trainable_variables()[prevTrainVarCount:]
+        mu, var = tf.split(self.nn, 2, 1)
+
+        var = tf.nn.softplus(var)
+        mu = tf.Print(mu, [mu], "muActor:", summarize=1000,
+                      first_n=20)
+        var = tf.Print(var, [var], "varActor:", summarize=1000,
+                       first_n=20)
+        mu1, mu2, mu3 = tf.split(mu, 3, 1)
+        s1, s2, s3 = tf.split(tf.sqrt(var), 3, 1)
+
+        o1 = tf.random_normal((1,), mu1, s1)
+        o2 = tf.random_normal((1,), mu2, s2)
+        o3 = tf.random_normal((1,), mu3, s3)
+        out = tf.concat([o1, o2, o3], 1)
+        self.out = tf.Print(out, [out], "outActor:",
+                            summarize=1000,
+                            first_n=20)
+        # self.nn = net
 
         # Target Network
         with tf.variable_scope('target'):
@@ -134,6 +153,24 @@ class Actor:
                         self.target_nn_params[i],
                         self.nn_params[i].initialized_value())
             self.target_nn_update_op = self.define_update_target_nn_op()
+
+            mu, var = tf.split(self.nn, 2, 1)
+
+            var = tf.nn.softplus(var)
+            mu = tf.Print(mu, [mu], "muTargetActor:", summarize=1000,
+                               first_n=20)
+            var = tf.Print(var, [var], "varTargetActor:", summarize=1000,
+                               first_n=20)
+            mu1, mu2, mu3 = tf.split(mu, 3, 1)
+            s1, s2, s3 = tf.split(tf.sqrt(var), 3, 1)
+
+            o1 = tf.random_normal((1,), mu1, s1)
+            o2 = tf.random_normal((1,), mu2, s2)
+            o3 = tf.random_normal((1,), mu3, s3)
+            out = tf.concat([o1, o2, o3], 1)
+            self.target_out = tf.Print(out, [out], "outTargetActor:",
+                                       summarize=1000,
+                                       first_n=20)
 
     def defineNNVGG(self, isTargetNN=False):
         with tf.variable_scope('inf'):
@@ -188,6 +225,7 @@ class Actor:
                 remSzX = int(self.vgg_state_dim / 2**numPool)
                 net = tf.reshape(net, [-1, remSzY*remSzX*H],
                                  name='flatten')
+                net = net / 255.0
                 print(remSzY, remSzX, net, H)
 
                 for i in range(len(self.HFC)):
@@ -227,7 +265,7 @@ class Actor:
                                              '/time_delay_action_before_sig',t)
                     ]
                 print(net)
-                net = tf.sigmoid(net)
+                # net = tf.sigmoid(net)
                 # net = tf.tanh(net)
 
         return self.images, net
@@ -243,6 +281,8 @@ class Actor:
                 name='input')
 
             net = images
+            net = tf.Print(net, [net], "input", first_n=2, summarize=10000)
+            # net = (net - 127.0) / 255.0
             with slim.arg_scope(
                 [slim.fully_connected, slim.conv2d],
                 activation_fn=tf.nn.relu,
@@ -309,17 +349,18 @@ class Actor:
                 net = tf.Print(net, [net], "outputActor:", summarize=1000,
                                first_n=10)
                 # print(net)
+                # net = tf.nn.relu(net)
                 r, th, t = tf.split(net, 3, 1)
                 # r, th, t = tf.split(1, 3, net)
-                r_o = -100.0 * tf.sigmoid(r)
-                th_o = 100.0 * tf.sigmoid(th)
-                t_o = 6000.0 * tf.sigmoid(t)
+                # r_o = 50.0 * tf.sigmoid(r)
+                # th_o = 9000.0 * tf.sigmoid(th)
+                # t_o = 4000.0 * tf.sigmoid(t)
                 if not isTargetNN:
                     self.weight_summaries += [
-                        tf.summary.histogram('out' + '/radius_action', r_o),
-                        tf.summary.histogram('out' + '/theta_action', th_o),
-                        tf.summary.histogram('out' +
-                                             '/time_delay_action',t_o),
+                        # tf.summary.histogram('out' + '/radius_action', r_o),
+                        # tf.summary.histogram('out' + '/theta_action', th_o),
+                        # tf.summary.histogram('out' +
+                        #                      '/time_delay_action',t_o),
                         tf.summary.histogram('out' +
                                              '/radius_action_before_sig', r),
                         tf.summary.histogram('out' +
@@ -327,7 +368,7 @@ class Actor:
                         tf.summary.histogram('out' +
                                              '/time_delay_action_before_sig',t)
                     ]
-                net = tf.sigmoid(net)
+                # net = tf.sigmoid(net)
                 # net = tf.tanh(net)
                 if not isTargetNN:
                     self.weight_summaries += [tf.summary.histogram('output', net)]
@@ -349,50 +390,123 @@ class Actor:
             #         tf.mul(self.target_nn_params[i], invtau))
             #      for i in range(len(self.target_nn_params))]
 
+    def defineLoss(self):
+        with tf.variable_scope("lossActor"):
+            # self.td_targets_pl = tf.placeholder(tf.float32, [None, 1],
+            #                                     name='tdTargets')
+            # self.critic_val_pl = tf.placeholder(tf.float32, [None, 1],
+            #                                     name='critic_val_pl')
+            # in1 = tf.Print(self.td_targets_pl,
+            #                [self.td_targets_pl],
+            #                "targets ", first_n=15, summarize=10)
+            # in2 = tf.Print(self.critic_val_pl, [self.critic_val_pl],
+            #                "critic ", first_n=15, summarize=100)
+            # self.delta = in1 - in2
+
+
+            self.delta_pl = tf.placeholder(tf.float32, [None, 1],
+                                           name='delta')
+            in1 = tf.Print(self.delta_pl,
+                           [self.delta_pl],
+                           "delta ", first_n=15, summarize=10)
+            inT1 = self.nn
+            inT2 = self.out
+            in2 = tf.log(inT2)
+
+            lossL2 = tf.reduce_mean(in1 * in2)
+            # lossL2 = slim.losses.mean_squared_error(self.td_targets_pl,
+                                                    # self.nn)
+            lossL2 = tf.Print(lossL2, [lossL2], "lossL2 ", first_n=10)
+
+            with tf.name_scope(''):
+                self.summaries += [
+                    tf.summary.scalar('mean_squared_diff_loss',
+                                      lossL2)]
+            regs = []
+            for v in self.nn_params:
+                if "w" in v.name:
+                    regs.append(tf.nn.l2_loss(v))
+            lossReg = tf.add_n(regs) * self.weightDecay
+            lossReg = tf.Print(lossReg, [lossReg], "regLoss ", first_n=10)
+            with tf.name_scope(''):
+                self.summaries += [
+                    tf.summary.scalar('mean_squared_diff_loss_reg',
+                                      lossReg)]
+
+            mu, var = tf.split(inT1, 2, 1)
+            var = tf.nn.softplus(var)
+            lossEnt = tf.reduce_sum(-0.5 * (tf.log(2 * np.pi * var) + 1)) * 0.0001
+            lossEnt = tf.Print(lossEnt, [lossEnt], "entLoss ", first_n=25)
+            with tf.name_scope(''):
+                self.summaries += [
+                    tf.summary.scalar('mean_loss_entropy',
+                                      lossEnt)]
+            loss = lossL2 + lossReg + lossEnt
+            with tf.name_scope(''):
+                self.summaries += [
+                    tf.summary.scalar('mean_squared_diff_loss_with_reg',
+                                      loss)]
+
+        return loss
+
     def defineTraining(self):
         with tf.variable_scope('train'):
-            self.critic_actions_gradient_pl = tf.placeholder(
-                tf.float32,
-                [None, self.actions_dim],
-                name='CriticActionsGradient')
+            # self.critic_actions_gradient_pl = tf.placeholder(
+        #         tf.float32,
+        #         [None, self.actions_dim],
+        #         name='CriticActionsGradient')
 
-            cag = tf.Print(self.critic_actions_gradient_pl, [self.critic_actions_gradient_pl], "cag", first_n=10)
-            gd = tf.gradients(
-                self.nn,
-                self.nn_params,
-                # critic grad descent
-                # here ascent -> negative
-                -cag)
+        #     cag = tf.Print(self.critic_actions_gradient_pl, [self.critic_actions_gradient_pl], "cag", first_n=10)
+        #     gd = tf.gradients(
+        #         self.nn,
+        #         self.nn_params,
+        #         # critic grad descent
+        #         # here ascent -> negative
+        #         -cag)
 
-        grads = []
-        for i in range(len(gd)):
-            if gd[i] is None:
-                grads.append(gd[i])
-            else:
-                grads.append(tf.Print(gd[i], [gd[i]], self.nn_params[i].name+"actor grads ", first_n = 10))
-                # grads.append(tf.clip_by_value(g, -1, 1))
-        self.actor_gradients = grads
+        # grads = []
+        # for i in range(len(gd)):
+        #     if gd[i] is None:
+        #         grads.append(gd[i])
+        #     else:
+        #         grads.append(tf.Print(gd[i], [gd[i]], self.nn_params[i].name+"actor grads ", first_n = 10))
+        #         # grads.append(tf.clip_by_value(g, -1, 1))
+        # self.actor_gradients = grads
 
-        if self.opti == 'momentum':
-            optimizer = tf.train.MomentumOptimizer(self.learning_rate,
-                                                   self.momentum)
-        elif self.opti == 'adam':
-            optimizer = tf.train.AdamOptimizer(self.learning_rate)
-        elif self.opti == 'sgd':
-            optimizer = tf.train.GradientDescentOptimizer(
-                self.learning_rate)
+            if self.opti == 'momentum':
+                optimizer = tf.train.MomentumOptimizer(self.learning_rate,
+                                                       self.momentum)
+            elif self.opti == 'adam':
+                optimizer = tf.train.AdamOptimizer(self.learning_rate)
+            elif self.opti == 'sgd':
+                optimizer = tf.train.GradientDescentOptimizer(
+                    self.learning_rate)
 
-        return optimizer.apply_gradients(zip(self.actor_gradients,
-                                             self.nn_params))
+        return optimizer.minimize(self.loss_op)
 
-    def run_train(self, inputs, a_grad, step):
+        # return optimizer.apply_gradients(zip(self.actor_gradients,
+        #                                      self.nn_params))
+
+    def run_train(self, inputs, delta, step):
         wSum = 300
+        lSum = 20
         if (step+1) % wSum == 0:
             _, summaries = self.sess.run([self.train_op,
                                           self.weight_summary_op],
                                          feed_dict={
                 self.input_pl: inputs,
-                self.critic_actions_gradient_pl: a_grad,
+                self.delta_pl: delta,
+                self.isTraining: True,
+                self.keep_prob: self.dropout
+            })
+            self.writer.add_summary(summaries, step)
+            self.writer.flush()
+        elif (step+1) % lSum == 0:
+            _, summaries = self.sess.run([self.train_op,
+                                          self.summary_op],
+                                         feed_dict={
+                self.input_pl: inputs,
+                self.delta_pl: delta,
                 self.isTraining: True,
                 self.keep_prob: self.dropout
             })
@@ -402,20 +516,20 @@ class Actor:
             self.sess.run([self.train_op],
                           feed_dict={
                 self.input_pl: inputs,
-                self.critic_actions_gradient_pl: a_grad,
+                self.delta_pl: delta,
                 self.isTraining: True,
                 self.keep_prob: self.dropout
             })
 
     def run_predict(self, inputs):
-        return self.sess.run(self.nn, feed_dict={
+        return self.sess.run(self.out, feed_dict={
             self.input_pl: inputs,
             self.isTraining: False,
             self.keep_prob: 1.0
         })
 
     def run_predict_target(self, inputs):
-        return self.sess.run(self.target_nn, feed_dict={
+        return self.sess.run(self.target_out, feed_dict={
             self.target_input_pl: inputs,
             self.isTraining: False,
             self.keep_prob: 1.0

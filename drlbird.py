@@ -280,7 +280,8 @@ class DrLBird:
                 currEpsilon = (self.startEpsilon - self.endEpsilon) * \
                                (1 - tmp_step / self.annealSteps) + \
                                self.endEpsilon
-                if ((not self.evalu) and
+                if (False and \
+                    (not self.evalu) and
                     (e < self.explT or np.random.rand() < currEpsilon)):
                     action = np.array([[np.random.rand(),
                                         np.random.rand(),
@@ -303,13 +304,13 @@ class DrLBird:
                     with self.lock:
                         self.currActSum += 1
                         a = self.currActSum
-                    printT("Agent {}: Step: {}/{} ({}/{}) Next action: {}\n".format(
+                    printT("Agent {}: Step: {}/{} ({}/{}) Next action: ({}, {}, {})".format(
                         tid,
                         localActSum,
                         localAct,
                         a,
                         ac,
-                        a_scaled))
+                        a_scaled[0][0], a_scaled[0][1], a_scaled[0][2]))
 
                     # self.sess.run(increment_ac_step_op)
 
@@ -378,6 +379,7 @@ class DrLBird:
                     self.learn()
 
                 state = newState
+                printT("")
                 sys.stdout.flush()
 
             if not self.evalu and self.params['mc']:

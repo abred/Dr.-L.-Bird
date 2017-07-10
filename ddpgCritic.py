@@ -14,11 +14,11 @@ import tfUtils as tfu
 class Critic:
     O = 1
 
-    Hconv1 = 32
-    Hconv2 = 64
-    Hconv3 = 128
-    Hconv4 = 256
-    HFC = [512, 512]
+    Hconv1 = 16
+    Hconv2 = 32
+    Hconv3 = 32
+    Hconv4 = 48
+    HFC = [96, 96]
     HFCVGG = [2048, 2048]
 
     tau = 0.001
@@ -260,7 +260,7 @@ class Critic:
             #                          shape=[None, self.actions_dim],
             #                          name='ActorActions')
 
-            net = images
+            net = self.input_pl
             with slim.arg_scope(
                 [slim.fully_connected, slim.conv2d],
                 activation_fn=tf.nn.relu,
@@ -353,7 +353,7 @@ class Critic:
             #      for i in range(len(self.target_nn_params))]
 
     def define_loss(self):
-        with tf.variable_scope('loss2'):
+        with tf.variable_scope('lossCritic'):
             self.td_targets_pl = tf.placeholder(tf.float32, [None, 1],
                                              name='tdTargets')
             in1 = tf.Print(self.td_targets_pl, [self.td_targets_pl], "targets ", first_n=15, summarize=10)

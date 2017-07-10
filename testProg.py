@@ -12,6 +12,8 @@ import os
 
 params = parseNNArgs.parse(sys.argv[1:])
 
+if os.environ['SLURM_JOB_NAME'] == 'zsh':
+    params['version'] = 'tmp'
 timestamp = str(int(time.time()))
 jobid = os.environ['SLURM_JOBID']
 out_dir = os.path.abspath(os.path.join(

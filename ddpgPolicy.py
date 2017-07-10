@@ -31,9 +31,9 @@ class DDPGPolicy:
     def update(self, states, actions, targets):
         step, out, delta = self.critic.run_train(states, actions, targets)
         # print("step: {}, loss: {}".format(step, loss))
-        ac = self.actor.run_predict(states)
-        a_grad = self.critic.run_get_action_gradients(states, ac)
-        self.actor.run_train(states, a_grad, step)
+        # ac = self.actor.run_predict(states)
+        # a_grad = self.critic.run_get_action_gradients(states, ac)
+        self.actor.run_train(states, delta, step)
         return step, out, delta
 
     def update_targets(self):

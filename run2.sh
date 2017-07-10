@@ -6,7 +6,7 @@
 #SBATCH -n 2
 #SBATCH -N 1
 #SBATCH -c 1
-#SBATCH --time 0-12:00:00
+#SBATCH --time 0-08:00:00
 ###SBATCH --time 0-01:00:00
 #SBATCH --mem 8G
 #SBATCH --mail-type=END,FAIL,TIME_LIMIT_90
