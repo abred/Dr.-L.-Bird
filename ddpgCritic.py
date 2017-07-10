@@ -356,8 +356,10 @@ class Critic:
         with tf.variable_scope('lossCritic'):
             self.td_targets_pl = tf.placeholder(tf.float32, [None, 1],
                                              name='tdTargets')
-            in1 = tf.Print(self.td_targets_pl, [self.td_targets_pl], "targets ", first_n=15, summarize=10)
-            in2 = tf.Print(self.nn, [self.nn], "nn ", first_n=15, summarize=100)
+            in1 = tf.Print(self.td_targets_pl, [self.td_targets_pl],
+                           "targetsCritic ", first_n=15, summarize=10)
+            in2 = tf.Print(self.nn, [self.nn],
+                           "nnCritic ", first_n=15, summarize=100)
             self.delta = in1 - in2
             # lossL2 = slim.losses.mean_squared_error(in1, in2)
             # lossL2 = tfu.mean_squared_diff(self.td_targets_pl, self.nn)
@@ -371,27 +373,28 @@ class Critic:
             lossL2 = tf.reduce_mean(lossL2)
             # lossL2 = slim.losses.mean_squared_error(self.td_targets_pl,
                                                     # self.nn)
-            lossL2 = tf.Print(lossL2, [lossL2], "lossL2 ", first_n=10)
+            lossL2 = tf.Print(lossL2, [lossL2], "lossL2Critic ", first_n=10)
 
             with tf.name_scope(''):
                 self.summaries += [
-                    tf.summary.scalar('mean_squared_diff_loss',
+                    tf.summary.scalar('mean_squared_diff_lossCritic',
                                       lossL2)]
             regs = []
             for v in self.nn_params:
                 if "w" in v.name:
                     regs.append(tf.nn.l2_loss(v))
             lossReg = tf.add_n(regs) * self.weightDecay
-            lossReg = tf.Print(lossReg, [lossReg], "regLoss ", first_n=10)
+            lossReg = tf.Print(lossReg, [lossReg], "regLossCritic ",
+                               first_n=10)
             with tf.name_scope(''):
                 self.summaries += [
-                    tf.summary.scalar('mean_squared_diff_loss_reg',
+                    tf.summary.scalar('mean_squared_diff_loss_regCritic',
                                       lossReg)]
 
             loss = lossL2 + lossReg
             with tf.name_scope(''):
                 self.summaries += [
-                    tf.summary.scalar('mean_squared_diff_loss_with_reg',
+                    tf.summary.scalar('mean_squared_diff_loss_with_regCritic',
                                       loss)]
 
         return loss

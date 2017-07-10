@@ -7,7 +7,7 @@ import time
 from tensorflow.python.framework import ops
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
-
+import tensorflow.contrib.distributions as tfd
 import math
 
 import tfUtils as tfu
@@ -124,17 +124,31 @@ class Actor:
         mu, var = tf.split(self.nn, 2, 1)
 
         var = tf.nn.softplus(var)
-        mu = tf.Print(mu, [mu], "muActor:", summarize=1000,
+        self.mu = tf.Print(mu, [mu], "muActor:", summarize=1000,
                       first_n=20)
-        var = tf.Print(var, [var], "varActor:", summarize=1000,
+        self.var = tf.Print(var, [var], "varActor:", summarize=1000,
                        first_n=20)
-        mu1, mu2, mu3 = tf.split(mu, 3, 1)
-        s1, s2, s3 = tf.split(tf.sqrt(var), 3, 1)
+        mu1, mu2, mu3 = tf.split(self.mu, 3, 1)
+        self.sigma = tf.sqrt(self.var)
+        s1, s2, s3 = tf.split(self.sigma, 3, 1)
 
-        o1 = tf.random_normal((1,), mu1, s1)
-        o2 = tf.random_normal((1,), mu2, s2)
-        o3 = tf.random_normal((1,), mu3, s3)
-        out = tf.concat([o1, o2, o3], 1)
+        self.normal = tfd.Normal(loc=0.0, scale=1.0)
+
+
+        o1n = self.normal.sample(1)
+        o1 = o1n * s1 + mu1
+        o2n = self.normal.sample(1)
+        o2 = o2n * s2 + mu2
+        o3n = self.normal.sample(1)
+        o3 = o3n * s3 + mu3
+        # o1 = tf.random_normal((1,), mu1, s1)
+        # o2 = tf.random_normal((1,), mu2, s2)
+        # o3 = tf.random_normal((1,), mu3, s3)
+        out = tf.concat([o1n, o2n, o3n], 0)
+        self.outN = tf.Print(out, [out], "outActorNorm:",
+                            summarize=1000,
+                            first_n=20)
+        out = tf.concat([o1, o2, o3], 0)
         self.out = tf.Print(out, [out], "outActor:",
                             summarize=1000,
                             first_n=20)
@@ -406,45 +420,59 @@ class Actor:
 
             self.delta_pl = tf.placeholder(tf.float32, [None, 1],
                                            name='delta')
-            in1 = tf.Print(self.delta_pl,
+            delta = tf.Print(self.delta_pl,
                            [self.delta_pl],
-                           "delta ", first_n=15, summarize=10)
-            inT1 = self.nn
-            inT2 = self.out
-            in2 = tf.log(inT2)
+                           "deltaActor ", first_n=15, summarize=10)
+            # inT1 = self.nn
+            inT2 = tf.Print(self.outN,
+                            [self.outN],
+                            "outNActor ", first_n=15, summarize=10)
+            # inT2 = self.out
+            # in2 = tf.log(inT2)
+            # advantage = loss
 
-            lossL2 = tf.reduce_mean(in1 * in2)
+            # advantage = array_ops.stop_gradient(advantage)
+            # return stochastic_tensor.distribution.log_prob(value) * advantage
+            # self._log_unnormalized_prob(x) - self._log_normalization()
+            logUnNormProb = -0.5 * tf.square(inT2)
+            logNorm = 0.5 * tf.log(2. * np.pi) + tf.log(self.sigma)
+            # return (x - self.loc) / self.scale
+
+            logProb = logUnNormProb - logNorm
+            lossL2 = tf.reduce_mean(logProb * tf.stop_gradient(delta))
+
+            # lossL2 = tf.reduce_mean(in1 * in2)
             # lossL2 = slim.losses.mean_squared_error(self.td_targets_pl,
                                                     # self.nn)
-            lossL2 = tf.Print(lossL2, [lossL2], "lossL2 ", first_n=10)
+            lossL2 = tf.Print(lossL2, [lossL2], "lossL2Actor ", first_n=25)
 
             with tf.name_scope(''):
                 self.summaries += [
-                    tf.summary.scalar('mean_squared_diff_loss',
+                    tf.summary.scalar('mean_squared_diff_lossActor',
                                       lossL2)]
             regs = []
             for v in self.nn_params:
                 if "w" in v.name:
                     regs.append(tf.nn.l2_loss(v))
             lossReg = tf.add_n(regs) * self.weightDecay
-            lossReg = tf.Print(lossReg, [lossReg], "regLoss ", first_n=10)
+            lossReg = tf.Print(lossReg, [lossReg], "regLossActor ", first_n=10)
             with tf.name_scope(''):
                 self.summaries += [
-                    tf.summary.scalar('mean_squared_diff_loss_reg',
+                    tf.summary.scalar('mean_squared_diff_loss_regActor',
                                       lossReg)]
 
-            mu, var = tf.split(inT1, 2, 1)
-            var = tf.nn.softplus(var)
-            lossEnt = tf.reduce_sum(-0.5 * (tf.log(2 * np.pi * var) + 1)) * 0.0001
-            lossEnt = tf.Print(lossEnt, [lossEnt], "entLoss ", first_n=25)
+            # mu, var = tf.split(inT1, 2, 1)
+            # var = tf.nn.softplus(var)
+            lossEnt = tf.reduce_sum(-0.5 * (tf.log(2 * np.pi * self.var) + 1)) * 0.001
+            lossEnt = tf.Print(lossEnt, [lossEnt], "entLossActor ", first_n=25)
             with tf.name_scope(''):
                 self.summaries += [
-                    tf.summary.scalar('mean_loss_entropy',
+                    tf.summary.scalar('mean_loss_entropyActor',
                                       lossEnt)]
             loss = lossL2 + lossReg + lossEnt
             with tf.name_scope(''):
                 self.summaries += [
-                    tf.summary.scalar('mean_squared_diff_loss_with_reg',
+                    tf.summary.scalar('mean_squared_diff_loss_with_regActor',
                                       loss)]
 
         return loss

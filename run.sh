@@ -57,18 +57,18 @@ PYTHONPATH=/home/s7550245/pyutil:/sw/taurus/libraries/tesseract/3.04/lib64/:/sw/
 		  --optimizerActor momentum \
 		  --startLearning 200 \
 		  --gamma 1.0 \
-		  --miniBatchSize 16 \
+		  --miniBatchSize 32 \
 		  --numEpochs 10000 \
 		  --annealSteps 2000 \
-		  --vgg \
-		  --xFirstVggLayers 13 \
+		  `#--vgg `\
+		  `#--xFirstVggLayers 13 `\
 		  `#--prioritized `\
 		  `#--importanceSampling `\
 		  --async \
-		  `#--dropout 0.5 `\
+		  --dropout 0.5 \
 		  `#-r /scratch/s7550245/Dr.-L.-Bird/runsDDPG/1/4366761_1488824728_1000_16_VGG13_dropout0.5_noBatchnorm_prioritized_wdA0.001_wdC0.0005_lrA0.0003_lrC0.001_momA0.1_momC0.1_optAmomentum_optCmomentum_prio_async_lvlRand` \
-		  --batchnorm \
-		  --batchnorm-decay 0.99 \
+		  `#--batchnorm `\
+		  `#--batchnorm-decay 0.99 `\
 		  `#--loadLevel 13 `\
 		  --mc \
 		  `#-r /scratch/s7550245/Dr.-L.-Bird/runsDDPG/1487256665b` \

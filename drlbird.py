@@ -161,6 +161,8 @@ class DrLBird:
         self.miniBatchSize = self.params['miniBatchSize']
         self.gamma = self.params['gamma']
         self.startLearning = self.params['startLearning']
+        if os.environ['SLURM_JOB_NAME'] == 'zsh' and not self.params['sleep']:
+            self.startLearning = 1
         if self.prioritized:
             self.replay = SumTree(replayBufferSize,
                                   self.params['miniBatchSize'],
@@ -433,7 +435,8 @@ class DrLBird:
 
     def learn(self):
         while True:
-            if self.replay.size() < self.startLearning:
+            if self.replay.size() < self.startLearning or \
+               self.replay.size() < self.miniBatchSize:
                 if self.params['async']:
                     continue
                 else:
