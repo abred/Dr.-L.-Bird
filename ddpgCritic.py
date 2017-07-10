@@ -129,7 +129,7 @@ class Critic:
 
                 self.weight_summaries += s
 
-        self.action_grads = self.define_action_grad()
+        # self.action_grads = self.define_action_grad()
         self.grads = self.define_grads()
 
         self.summary_op = tf.summary.merge(self.summaries)
@@ -425,33 +425,33 @@ class Critic:
             # return optimizer.minimize(self.loss_op,
                                       # global_step=self.global_step)
 
-    def define_action_grad(self):
-        with tf.variable_scope('getActionGradient'):
-            print(self.nn)
-            print(self.testw)
-            if self.batchnorm is None:
-                nn = tf.Print(self.nn, [self.nn],"getactiongradsOut", first_n=10, summarize=10)
-            else:
-                nn = tf.Print(self.nn, [self.fc0bnb,
-                                    self.fc0bng,
-                                    self.fc0bnmm,
-                                    self.fc0bnmv,
-                                    self.fc1bnb,
-                                    self.fc1bng,
-                                    self.fc1bnmm,
-                                    self.fc1bnmv,
-                                    self.nn], "getactiongradsOut", first_n=10, summarize=10)
-            ac = tf.Print(self.testw, [self.testw], "getactiongradAct", first_n=10)
-            gd = tf.gradients(nn, self.actions_pl)
-            # print(tf.trainable_variables())
-            grads = []
-            for i in range(len(gd)):
-                print(gd[i])
-                grads.append(tf.Print(gd[i], [gd[i]], "actiongrads", first_n=10))
-                # print(nn, ac, gd[i])
-            return grads[0]
-            # return tf.Print(gd, [gd], "actiongrads", first_n=10)
-            # return tf.gradients(self.nn, self.actions_pl)[0]
+    # def define_action_grad(self):
+    #     with tf.variable_scope('getActionGradient'):
+    #         print(self.nn)
+    #         print(self.testw)
+    #         if self.batchnorm is None:
+    #             nn = tf.Print(self.nn, [self.nn],"getactiongradsOut", first_n=10, summarize=10)
+    #         else:
+    #             nn = tf.Print(self.nn, [self.fc0bnb,
+    #                                 self.fc0bng,
+    #                                 self.fc0bnmm,
+    #                                 self.fc0bnmv,
+    #                                 self.fc1bnb,
+    #                                 self.fc1bng,
+    #                                 self.fc1bnmm,
+    #                                 self.fc1bnmv,
+    #                                 self.nn], "getactiongradsOut", first_n=10, summarize=10)
+    #         ac = tf.Print(self.testw, [self.testw], "getactiongradAct", first_n=10)
+    #         gd = tf.gradients(nn, self.actions_pl)
+    #         # print(tf.trainable_variables())
+    #         grads = []
+    #         for i in range(len(gd)):
+    #             print(gd[i])
+    #             grads.append(tf.Print(gd[i], [gd[i]], "actiongrads", first_n=10))
+    #             # print(nn, ac, gd[i])
+    #         return grads[0]
+    #         # return tf.Print(gd, [gd], "actiongrads", first_n=10)
+    #         # return tf.gradients(self.nn, self.actions_pl)[0]
 
     def define_grads(self):
         with tf.variable_scope('getGrads'):
@@ -527,21 +527,21 @@ class Critic:
             self.keep_prob: 1.0
         })
 
-    def run_get_action_gradients2(self, inputs, actions):
-        return self.sess.run(self.action_grads, feed_dict={
-            self.input_pl: inputs,
-            self.actions_pl: actions,
-            self.isTraining: True,
-            self.keep_prob: 1.0
-        })
+    # def run_get_action_gradients2(self, inputs, actions):
+    #     return self.sess.run(self.action_grads, feed_dict={
+    #         self.input_pl: inputs,
+    #         self.actions_pl: actions,
+    #         self.isTraining: True,
+    #         self.keep_prob: 1.0
+    #     })
 
-    def run_get_action_gradients(self, inputs, actions):
-        return self.sess.run(self.action_grads, feed_dict={
-            self.input_pl: inputs,
-            self.actions_pl: actions,
-            self.isTraining: True,
-            self.keep_prob: 1.0
-        })
+    # def run_get_action_gradients(self, inputs, actions):
+    #     return self.sess.run(self.action_grads, feed_dict={
+    #         self.input_pl: inputs,
+    #         self.actions_pl: actions,
+    #         self.isTraining: True,
+    #         self.keep_prob: 1.0
+    #     })
 
     def run_get_gradients(self, inputs, actions, targets):
         return zip(self.nn_params, self.sess.run(self.grads, feed_dict={
