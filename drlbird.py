@@ -63,6 +63,7 @@ class DrLBird:
         self.useVGG = self.params['useVGG']
         self.prioritized = self.params['prioritized']
         self.annealSteps = self.params['annealSteps']
+        self.maxBirds = 8
         self.lock = threading.Lock()
 
         self.sess = tf.Session()
@@ -393,13 +394,19 @@ class DrLBird:
                 returnV = 0.0
                 returnVs = []
                 for samp in reversed(samples):
-                    states.append(samp[0])
-                    actions.append(samp[1])
-                    rewards.append(samp[2])
-                    terminals.append(samp[3])
-                    newStates.append(samp[4])
-                    returnV += reward
+                    returnV += samp[2]
+                for i in range(self.maxBirds):
+                    j = min(i, len(samples)-1)
+                    states.append(samples[j][0])
+                    actions.append(samples[j][1])
+                    rewards.append(samples[j][2])
+                    terminals.append(samples[j][3])
+                    newStates.append(samples[j][4])
                     returnVs.append(returnV)
+                    if i < len(samples):
+                        returnV -= samples[j][2]
+                    else:
+                        returnV = 0
                 with self.lock:
                     self.replay.add(states, actions, returnVs,
                                     terminals, newStates, len(states))

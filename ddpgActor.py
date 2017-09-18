@@ -52,6 +52,7 @@ class Actor:
         self.useVGG = params['useVGG']
         self.tau = params['tau']
         self.miniBatchSize = params['miniBatchSize']
+        self.maxBirds = 8
 
         if params['state_dim'] is not None:
             self.state_dim = params['state_dim']
@@ -74,8 +75,8 @@ class Actor:
             self.images = inputs
 
         with tf.variable_scope('Actor'):
-            self.keep_prob = tf.placeholder(tf.float32)
-            self.isTraining = tf.placeholder(tf.bool)
+            self.keep_prob = tf.placeholder(tf.float32, name="keep_prob")
+            self.isTraining = tf.placeholder(tf.bool, name="isTrain")
 
             # Actor Network
             self.setNN()
@@ -291,7 +292,7 @@ class Actor:
         with tf.variable_scope('inf'):
             images = tf.placeholder(
                 tf.float32,
-                shape=[self.miniBatchSize, None,
+                shape=[None, None,
                        self.state_dim_y,
                        self.state_dim_x,
                        self.col_channels],
@@ -305,6 +306,9 @@ class Actor:
                              name='rnn_input_flatten')
             net = tf.Print(net, [net], "input", first_n=2, summarize=10000)
             # net = (net - 127.0) / 255.0
+            self.seqlen = tf.placeholder(tf.int32,
+                                         [None], name="seqlen")
+
             with slim.arg_scope(
                 [slim.fully_connected, slim.conv2d],
                 activation_fn=tf.nn.relu,
@@ -341,8 +345,8 @@ class Actor:
 
                 remSzY = int(self.state_dim_y / 2**4)
                 remSzX = int(self.state_dim_x / 2**4)
-                net = tf.reshape(net, [self.miniBatchSize,
-                                       -1,
+                net = tf.reshape(net, [-1,
+                                       self.maxBirds,
                                        remSzY*remSzX*self.Hconv4],
                                  name='flatten')
 
@@ -354,8 +358,7 @@ class Actor:
                                         'updates_collections': None,
                                         'decay': self.bnDecay,
                                         'scale': True}):
-                    self.seqlen = tf.placeholder(tf.int32,
-                                                 [self.miniBatchSize])
+
                     cell = tf.contrib.rnn.LSTMCell(self.HFC[0])
                     rnn_outputs, final_state = \
                         tf.nn.dynamic_rnn(cell, net,
@@ -410,7 +413,7 @@ class Actor:
                         tf.summary.histogram('out' +
                                              '/time_delay_action_before_sig',t)
                     ]
-                # net = tf.sigmoid(net)
+                net = tf.sigmoid(net)
                 # net = tf.tanh(net)
                 if not isTargetNN:
                     self.weight_summaries += [tf.summary.histogram('output', net)]

@@ -71,5 +71,6 @@ PYTHONPATH=/home/s7550245/pyutil:/sw/taurus/libraries/tesseract/3.04/lib64/:/sw/
 		  `#--batchnorm-decay 0.99 `\
 		  `#--loadLevel 13 `\
 		  --mc \
+		  --rnn \
 		  `#-r /scratch/s7550245/Dr.-L.-Bird/runsDDPG/1487256665b` \
 		  --tau 0.01 \

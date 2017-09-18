@@ -36,6 +36,7 @@ class Critic:
         self.summaries = []
         self.weight_summaries = []
         self.out_dir = out_dir
+        self.maxBirds = 8
         if params['batchnorm']:
             self.batchnorm = slim.batch_norm
             # self.batchnorm = tfu.batch_normBUG
@@ -147,7 +148,7 @@ class Critic:
             defNN = self.defineNN
             self.input_pl = tf.placeholder(
                 tf.float32,
-                shape=[self.miniBatchSize,
+                shape=[None,
                        None,
                        self.state_dim_y,
                        self.state_dim_x,
@@ -155,7 +156,7 @@ class Critic:
                 name='input')
 
         self.actions_pl = tf.placeholder(tf.float32,
-                                         shape=[self.miniBatchSize,
+                                         shape=[None,
                                                 None,
                                                 self.actions_dim],
                                          name='ActorActions')
@@ -272,6 +273,10 @@ class Critic:
                                    self.state_dim_x,
                                    self.col_channels],
                              name='rnn_input_flatten')
+
+            self.seqlen = tf.placeholder(tf.int32,
+                                         [None])
+
             with slim.arg_scope(
                 [slim.fully_connected, slim.conv2d],
                 activation_fn=tf.nn.relu,
@@ -307,13 +312,13 @@ class Critic:
 
                 remSzY = int(self.state_dim_y / 2**4)
                 remSzX = int(self.state_dim_x / 2**4)
-                net = tf.reshape(net, [self.miniBatchSize,
-                                       -1,
+                net = tf.reshape(net, [-1,
+                                       self.maxBirds,
                                        remSzX*remSzY*self.Hconv4],
                                  name='flatten')
                 act = self.actions_pl
-                act = tf.reshape(act, [self.miniBatchSize,
-                                       -1,
+                act = tf.reshape(act, [-1,
+                                       self.maxBirds,
                                        self.actions_dim],
                                  name='rnn_input_flatten')
                 print(net)
@@ -335,8 +340,6 @@ class Critic:
                                         'updates_collections': None,
                                         'is_training': self.isTraining,
                                         'scale': True}):
-                    self.seqlen = tf.placeholder(tf.int32,
-                                                 [self.miniBatchSize])
                     cell = tf.contrib.rnn.LSTMCell(self.HFC[0])
                     rnn_outputs, final_state = \
                         tf.nn.dynamic_rnn(cell, net,
@@ -391,7 +394,7 @@ class Critic:
     def define_loss(self):
         with tf.variable_scope('lossCritic'):
             self.td_targets_pl = tf.placeholder(tf.float32,
-                                                [self.miniBatchSize, 1],
+                                                [None, 1],
                                              name='tdTargets')
             in1 = tf.Print(self.td_targets_pl, [self.td_targets_pl],
                            "targetsCritic ", first_n=15, summarize=10)

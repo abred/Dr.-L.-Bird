@@ -263,6 +263,7 @@ class Driver:
                                              order=1)
         # self.dataNN.shape = (1, self.height / 4, self.width / 4, 3)
         self.dataNN.shape = (1,
+                             1,
                              self.dataNN.shape[0],
                              self.dataNN.shape[1],
                              self.dataNN.shape[2])
